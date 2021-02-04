@@ -1,6 +1,7 @@
 # LiveKit
 
 Trying to build an interface for Python doing similar things as [OBS Studio](https://github.com/obsproject/obs-studio)
+
 Still immature and under construction.
 
 ## Building 
@@ -81,5 +82,6 @@ Unlike OBS Studio, LiveKit doesn't have a dedicated audio mixer. However, there 
 
 ## License
 
-This source code is licensed under [GPL 2.0](https://github.com/fynv/LiveKit/blob/master/LICENSE).
+This source code is provided to you by ZhouYu Tech Co.,Ltd (北京宙予科技有限公司) 
+and is licensed under [GPL 2.0](https://github.com/fynv/LiveKit/blob/master/LICENSE).
 

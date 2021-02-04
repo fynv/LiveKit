@@ -16,6 +16,7 @@ git clone https://github.com/fynv/LiveKit.git
 
 2. Download the [third-party dependency package](https://raw.githubusercontent.com/fynv/fynv.github.io/master/LiveKit-thirdparty-depends-win64.zip).
 
+* The package contains: ffmpeg-4.3.1, glew-2.1.0, glfw-3.3.2
 * Decompress the contents to the "thirdparty" folder.
 
 3. Create a "build" folder and build with CMake

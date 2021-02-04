@@ -81,5 +81,5 @@ Unlike OBS Studio, LiveKit doesn't have a dedicated audio mixer. However, there 
 
 ## License
 
-This source code is licensed under [GPL 2.0](https://github.com/fynv/LiveKit/raw/master/LICENSE).
+This source code is licensed under [GPL 2.0](https://github.com/fynv/LiveKit/blob/master/LICENSE).
 

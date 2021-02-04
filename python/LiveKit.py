@@ -99,7 +99,7 @@ class Camera:
     def size(self):
         return Native.CameraWidth(self.cptr), Native.CameraHeight(self.cptr)
 
-    def add_target(self, target):
+    def add_target(self, target): # slot for video-targets
         self.targets += [target]
         Native.CameraAddTarget(self.cptr, target.target_ptr)
 
@@ -110,7 +110,7 @@ class Viewer:
     def __del__(self):
         Native.ViewerDestroy(self.cptr)
 
-    def set_source(self, source):
+    def set_source(self, source): # slot for a video-source
         self.source = source
         Native.ViewerSetSource(self.cptr, source.source_ptr)
 
@@ -121,7 +121,7 @@ class WindowList(StringList):
     def __init__(self):
         self.cptr = Native.WindowListCreate()
 
-class WindowCapture:
+class WindowCapture: # video-source
     def __init__(self, idx):
         self.cptr = Native.WindowCaptureCreate(idx)
         self.source_ptr = Native.WindowCaptureGetSourcePtr(self.cptr)
@@ -140,7 +140,7 @@ class Recorder:
     def __del__(self):
         Native.RecorderDestroy(self.cptr)
 
-    def set_source(self, source):
+    def set_source(self, source):  # slot for a video-source
         self.source = source
         Native.RecorderSetSource(self.cptr, source.source_ptr)
 

@@ -10,10 +10,7 @@ class WindowSelect:
         self.label0 = tk.Label(self.window, text="Select a window:")
         self.label0.pack(padx=5, pady=5, side=tk.TOP)
 
-        self.window_titles = []
-        for i in range(lst_windows.size()):
-            title = lst_windows.get(i)
-            self.window_titles+=[title]
+        self.window_titles = lst_windows
 
         self.window_selector = ttk.Combobox(self.window, width = 40) 
         self.window_selector.pack(padx=5, pady=5, side=tk.TOP)
@@ -32,7 +29,7 @@ class WindowSelect:
     def main_loop(self):
         self.window.mainloop()
 
-lst = lk.WindowList()
+lst = lk.WindowList().to_pylist()
 wsel = WindowSelect(lst)
 wsel.main_loop()
 

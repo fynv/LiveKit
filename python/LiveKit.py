@@ -63,6 +63,8 @@ class StringList:
     def get(self, i):
         return ffi.string(Native.StrListGet(self.cptr, i)).decode('mbcs')
 
+    def to_pylist(self):
+        return [self.get(i) for i in range(self.size())]
 
 class VideoPort: # video-source & video-target
     def __init__(self):

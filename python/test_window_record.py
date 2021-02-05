@@ -11,11 +11,7 @@ class Recording:
         self.label0 = tk.Label(self.window, text="Select a window:")
         self.label0.pack(padx=5, pady=5, side=tk.TOP)
        
-        self.window_titles = []
-
-        for i in range(lst_windows.size()):
-            title = lst_windows.get(i)
-            self.window_titles+=[title]
+        self.window_titles = lst_windows
 
         self.window_selector = ttk.Combobox(self.window, width = 40) 
         self.window_selector.pack(padx=5, pady=5, side=tk.TOP)
@@ -31,8 +27,7 @@ class Recording:
         self.btn.pack(padx=5, pady=5, side=tk.TOP)
 
         self.idx_audio = idx_audio
-        self.recording = False
-        self.wc = None
+        self.recording = False      
         self.recorder = None
 
     def start_stop(self):
@@ -40,13 +35,12 @@ class Recording:
         if self.recording:            
             self.btn.configure(text = "Stop")
             self.lbl.configure(image=self.logo_recording)
-            self.wc = lk.WindowCapture(self.window_selector.current())
+            wc = lk.WindowCapture(self.window_selector.current())
             self.recorder = lk.Recorder("test.mp4", True, 576, 1024, self.idx_audio)
-            self.recorder.set_source(self.wc)
+            self.recorder.set_source(wc)
             self.recorder.start()
         else:
             self.recorder = None
-            self.wc = None
             self.btn.configure(text = "Start")
             self.lbl.configure(image=self.logo_stopped)
 
@@ -55,8 +49,7 @@ class Recording:
         self.window.mainloop()
 
 
-
-lst_windows = lk.WindowList()
+lst_windows = lk.WindowList().to_pylist()
 
 lst_audio_devices = lk.AudioInputDeviceList()
 idx_audio = -1

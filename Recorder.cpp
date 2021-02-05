@@ -68,9 +68,9 @@ namespace LiveKit
 		AVCodecContext *c = avcodec_alloc_context3(codec);
 		ost->enc = c;
 		c->sample_fmt = AV_SAMPLE_FMT_FLTP;
-		c->bit_rate = 64000;
+		c->bit_rate = 128000;
 		c->sample_rate = sample_rate;
-		c->channel_layout = AV_CH_LAYOUT_MONO;
+		c->channel_layout = AV_CH_LAYOUT_STEREO;
 		c->channels = av_get_channel_layout_nb_channels(c->channel_layout);
 		ost->st->time_base = { 1, c->sample_rate };
 		if (oc->oformat->flags & AVFMT_GLOBALHEADER)
@@ -309,7 +309,7 @@ namespace LiveKit
 
 		AVCodecContext *c = m_audio_st->enc;
 		int16_t *q = (int16_t*)m_audio_st->tmp_frame->data[0];
-		memcpy(q, buf->m_data, sizeof(short)*m_audio_st->tmp_frame->nb_samples);
+		memcpy(q, buf->m_data, sizeof(short)*m_audio_st->tmp_frame->nb_samples*2);
 		m_sound_recorder->recycle_buffer(buf);
 
 		m_audio_st->tmp_frame->pts = m_audio_st->next_pts;

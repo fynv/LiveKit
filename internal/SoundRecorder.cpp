@@ -12,30 +12,30 @@ namespace LiveKit
 	{
 		WAVEFORMATEX format = {};
 		format.wFormatTag = WAVE_FORMAT_PCM;
-		format.nChannels = 1;
+		format.nChannels = 2;
 		format.nSamplesPerSec = 44100;
-		format.nAvgBytesPerSec = format.nSamplesPerSec * sizeof(short);
-		format.nBlockAlign = sizeof(short);
+		format.nAvgBytesPerSec = format.nSamplesPerSec * format.nChannels * sizeof(short);
+		format.nBlockAlign = sizeof(short) * format.nChannels;
 		format.wBitsPerSample = 16;
 		format.cbSize = 0;
 
 		waveInOpen((LPHWAVEIN)&m_WaveIn, devId, &format, (DWORD_PTR)(s_SoundInCallback), (DWORD_PTR)this, CALLBACK_FUNCTION);
 
-		m_Buffer = new short[samples_per_buffer * 2];
+		m_Buffer = new short[samples_per_buffer * format.nChannels * 2];
 		m_Buffer1 = m_Buffer;
-		m_Buffer2 = m_Buffer + samples_per_buffer;
-		memset(m_Buffer, 0, sizeof(short)*samples_per_buffer * 2);
+		m_Buffer2 = m_Buffer + samples_per_buffer * format.nChannels;
+		memset(m_Buffer, 0, sizeof(short)*samples_per_buffer * format.nChannels * 2);
 
 		m_WaveHeader1 = (std::unique_ptr<WAVEHDR>)(new WAVEHDR);
 		m_WaveHeader1->lpData = (char *)m_Buffer1;
-		m_WaveHeader1->dwBufferLength = (DWORD)(samples_per_buffer * sizeof(short));
+		m_WaveHeader1->dwBufferLength = (DWORD)(samples_per_buffer * format.nChannels * sizeof(short));
 		m_WaveHeader1->dwFlags = 0;
 		waveInPrepareHeader((HWAVEIN)m_WaveIn, m_WaveHeader1.get(), sizeof(WAVEHDR));
 		waveInAddBuffer((HWAVEIN)m_WaveIn, m_WaveHeader1.get(), sizeof(WAVEHDR));
 
 		m_WaveHeader2 = (std::unique_ptr<WAVEHDR>)(new WAVEHDR);
 		m_WaveHeader2->lpData = (char *)m_Buffer2;
-		m_WaveHeader2->dwBufferLength = (DWORD)(samples_per_buffer * sizeof(short));
+		m_WaveHeader2->dwBufferLength = (DWORD)(samples_per_buffer* format.nChannels * sizeof(short));
 		m_WaveHeader2->dwFlags = 0;	
 		waveInPrepareHeader((HWAVEIN)m_WaveIn, m_WaveHeader2.get(), sizeof(WAVEHDR));
 		waveInAddBuffer((HWAVEIN)m_WaveIn, m_WaveHeader2.get(), sizeof(WAVEHDR));
@@ -84,12 +84,12 @@ namespace LiveKit
 
 	void SoundRecorder::recordBuf(const short* data)
 	{
-		unsigned size = (unsigned)(m_samples_per_buffer * sizeof(short));
+		unsigned size = (unsigned)(m_samples_per_buffer * sizeof(short) * 2);
 		Buffer* newBuf;
 		if (m_recycler->Size() > 0)
 			newBuf = m_recycler->PopBuffer();
 		else
-			newBuf = new Buffer(m_samples_per_buffer);
+			newBuf = new Buffer(m_samples_per_buffer *2);
 		memcpy(newBuf->m_data, data, size);
 		m_buffer_queue->PushBuffer(newBuf);
 	}	

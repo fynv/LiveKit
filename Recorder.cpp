@@ -57,7 +57,6 @@ namespace LiveKit
 		double mega_pixels = (double)(width * height) / 1000000.0;
 		double mega_bps = (sqrt(b*b + 4 * a*mega_pixels) - b) / (2 * a);
 		c->bit_rate = (int64_t)(mega_bps*1000000.0);
-		printf("%d\n", c->bit_rate);
 		c->width = width;
 		c->height = height;
 		ost->st->time_base = { 1, fps };

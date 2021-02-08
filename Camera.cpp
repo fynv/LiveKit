@@ -72,7 +72,6 @@ namespace LiveKit
 		static bool s_first_time = true;
 		if (s_first_time)
 		{
-			av_log_set_level(AV_LOG_QUIET);
 			avdevice_register_all();
 			s_first_time = false;
 		}

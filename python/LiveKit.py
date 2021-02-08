@@ -46,6 +46,19 @@ void RecorderDestroy(void* ptr);
 void RecorderSetSource(void* ptr, void* p_source);
 void RecorderStart(void* ptr);
 void RecorderStop(void* ptr);
+
+void* CompositorCreate(int video_width, int video_height, int window_width, int window_height, const char* title);
+void CompositorDestroy(void* ptr);
+void CompositorSetVideoResolution(void* ptr, int video_width, int video_height);
+int CompositorVideoWidth(void* ptr);
+int CompositorVideoHeight(void* ptr);
+void CompositorSetSource(void* ptr, int i, void* p_source);
+void CompositorSetSource1(void* ptr, int i, void* p_source, int pos_x, int pos_y);
+void CompositorSetSource2(void* ptr, int i, void* p_source, int pos_x, int pos_y, int pos_x2, int pos_y2);
+void CompositorRemoveSource(void* ptr, int i);
+void CompositorSetMargin(void* ptr, int margin);
+int CompositorDraw(void* ptr);
+void CompositorAddTarget(void* ptr, void* p_target);
 """)
 
 if os.name == 'nt':
@@ -101,7 +114,7 @@ class Camera:
     def size(self):
         return Native.CameraWidth(self.cptr), Native.CameraHeight(self.cptr)
 
-    def add_target(self, target): # slot for video-targets
+    def add_target(self, target): # slots for video-targets
         self.targets += [target]
         Native.CameraAddTarget(self.cptr, target.target_ptr)
 
@@ -152,3 +165,52 @@ class Recorder:
     def stop(self):
         Native.RecorderStop(self.cptr)
  
+class Compositor:
+    def __init__(self, video_width, video_height, window_width, window_height, title):
+        self.cptr = Native.CompositorCreate(video_width, video_height, window_width, window_height, title.encode('utf-8'))
+        self.sources = []
+        self.targets = []
+
+    def __del__(self):
+        Native.CompositorDestroy(self.cptr)
+
+    def set_video_resolution(self, video_width, video_height):
+        Native.CompositorSetVideoResolution(self.cptr, video_width, video_height)
+
+    def video_size(self):
+        return Native.CompositorVideoWidth(self.cptr), Native.CompositorVideoHeight(self.cptr)
+
+    def set_source(self, idx, source, upper_left=None, lower_right= None): # slots for a video-source
+        while idx>=len(self.sources):
+            self.sources.append(None)
+
+        if source is None:
+            Native.CompositorRemoveSource(self.cptr, idx)
+        else:
+            mode = 0 # stretch-full
+            if not upper_left is None:
+                mode = 1 # move 
+                if not lower_right is None:
+                    mode = 2 # move & stretch        
+            if mode == 0:
+                Native.CompositorSetSource(self.cptr, idx, source.source_ptr)
+            elif mode == 1:
+                Native.CompositorSetSource1(self.cptr, idx, source.source_ptr, upper_left[0], upper_left[1])
+            else:
+                Native.CompositorSetSource2(self.cptr, idx, source.source_ptr, upper_left[0], upper_left[1], lower_right[0], lower_right[1])   
+
+        self.sources[idx] = source
+
+    def remove_source(self, idx):
+        self.set_source(idx, None)
+
+    def set_margin(self, margin):
+        Native.CompositorSetMargin(self.cptr, margin)
+
+    def draw(self):
+        return Native.CompositorDraw(self.cptr)!=0
+
+    def add_target(self, target): # slots for video-targets
+        self.targets += [target]
+        Native.CompositorAddTarget(self.cptr, target.target_ptr)
+

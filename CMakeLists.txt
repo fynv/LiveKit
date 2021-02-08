@@ -29,6 +29,7 @@ link_directories(${LIB_DIR})
 
 set (LIB_SOURCES
 internal/Image.cpp
+internal/RenderingOGL.cpp
 internal/SoundRecorder.cpp
 VideoPort.cpp
 ImageFile.cpp
@@ -36,6 +37,7 @@ Camera.cpp
 WindowCapture.cpp
 Viewer.cpp
 Recorder.cpp
+Compositor.cpp
 )
 
 set (LIB_HEADERS
@@ -45,11 +47,13 @@ Camera.h
 WindowCapture.h
 Viewer.h
 Recorder.h
+Compositor.h
 )
 
 set(INTERNAL_HEADERS
 internal/Utils.h
 internal/Image.h
+internal/RenderingOGL.h
 internal/BufferQueue.h
 internal/SoundRecorder.h
 )

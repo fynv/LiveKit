@@ -12,7 +12,10 @@ target_link_libraries(test_window_capture LiveKit)
 add_executable(test_window_record test_window_record.cpp)
 target_link_libraries(test_window_record LiveKit)
 
-install(TARGETS test_image test_camera test_window_capture test_window_record RUNTIME DESTINATION test_cpp)
+add_executable(test_compositor test_compositor.cpp)
+target_link_libraries(test_compositor LiveKit)
+
+install(TARGETS test_image test_camera test_window_capture test_window_record test_compositor RUNTIME DESTINATION test_cpp)
 
 
 set(THIRD_PARTY_DLL 

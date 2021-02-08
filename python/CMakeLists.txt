@@ -43,6 +43,7 @@ test_image.py
 test_camera.py
 test_window_capture.py
 test_window_record.py
+test_compositor.py
 
 sign_green.png
 sign_red.png

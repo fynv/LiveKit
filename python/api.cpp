@@ -49,6 +49,19 @@ extern "C"
 	PY_LiveKit_API void RecorderStart(void* ptr);
 	PY_LiveKit_API void RecorderStop(void* ptr);
 
+	PY_LiveKit_API void* CompositorCreate(int video_width, int video_height, int window_width, int window_height, const char* title);
+	PY_LiveKit_API void CompositorDestroy(void* ptr);
+	PY_LiveKit_API void CompositorSetVideoResolution(void* ptr, int video_width, int video_height);
+	PY_LiveKit_API int CompositorVideoWidth(void* ptr);
+	PY_LiveKit_API int CompositorVideoHeight(void* ptr);
+	PY_LiveKit_API void CompositorSetSource(void* ptr, int i, void* p_source);
+	PY_LiveKit_API void CompositorSetSource1(void* ptr, int i, void* p_source, int pos_x, int pos_y);
+	PY_LiveKit_API void CompositorSetSource2(void* ptr, int i, void* p_source, int pos_x, int pos_y, int pos_x2, int pos_y2);
+	PY_LiveKit_API void CompositorRemoveSource(void* ptr, int i);
+	PY_LiveKit_API void CompositorSetMargin(void* ptr, int margin);
+	PY_LiveKit_API int CompositorDraw(void* ptr);
+	PY_LiveKit_API void CompositorAddTarget(void* ptr, void* p_target);
+
 }
 
 #include <VideoPort.h>
@@ -57,6 +70,7 @@ extern "C"
 #include <Viewer.h>
 #include <WindowCapture.h>
 #include <Recorder.h>
+#include <Compositor.h>
 using namespace LiveKit;
 
 #include <vector>
@@ -274,4 +288,79 @@ void RecorderStop(void* ptr)
 {
 	Recorder* recorder = (Recorder*)ptr;
 	recorder->stop();
+}
+
+void* CompositorCreate(int video_width, int video_height, int window_width, int window_height, const char* title)
+{
+	return new Compositor(video_width, video_height, window_width, window_height, title);
+}
+
+void CompositorDestroy(void* ptr)
+{
+	Compositor* comp = (Compositor*)ptr;
+	delete comp;
+}
+
+void CompositorSetVideoResolution(void* ptr, int video_width, int video_height)
+{
+	Compositor* comp = (Compositor*)ptr;
+	comp->SetVideoResolution(video_width, video_height);
+}
+
+int CompositorVideoWidth(void* ptr)
+{
+	Compositor* comp = (Compositor*)ptr;
+	return comp->VideoWidth();
+}
+
+int CompositorVideoHeight(void* ptr)
+{
+	Compositor* comp = (Compositor*)ptr;
+	return comp->VideoHeight();
+}
+
+void CompositorSetSource(void* ptr, int i, void* p_source)
+{
+	Compositor* comp = (Compositor*)ptr;
+	VideoSource* source = (VideoSource*)p_source;
+	comp->SetSource(i, source);
+}
+
+void CompositorSetSource1(void* ptr, int i, void* p_source, int pos_x, int pos_y)
+{
+	Compositor* comp = (Compositor*)ptr;
+	VideoSource* source = (VideoSource*)p_source;
+	comp->SetSource(i, source, pos_x, pos_y);
+}
+
+void CompositorSetSource2(void* ptr, int i, void* p_source, int pos_x, int pos_y, int pos_x2, int pos_y2)
+{
+	Compositor* comp = (Compositor*)ptr;
+	VideoSource* source = (VideoSource*)p_source;
+	comp->SetSource(i, source, pos_x, pos_y, pos_x2, pos_y2);
+}
+
+void CompositorRemoveSource(void* ptr, int i)
+{
+	Compositor* comp = (Compositor*)ptr;
+	comp->RemoveSource(i);
+}
+
+void CompositorSetMargin(void* ptr, int margin)
+{
+	Compositor* comp = (Compositor*)ptr;
+	comp->SetMargin(margin);
+}
+
+int CompositorDraw(void* ptr)
+{
+	Compositor* comp = (Compositor*)ptr;
+	return comp->Draw() ? 1 : 0;
+}
+
+void CompositorAddTarget(void* ptr, void* p_target)
+{
+	Compositor* comp = (Compositor*)ptr;
+	VideoTarget* target = (VideoTarget*)p_target;
+	comp->AddTarget(target);
 }

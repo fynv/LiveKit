@@ -15,6 +15,7 @@ extern "C"
 #include <libswresample/swresample.h>
 }
 #include <thread>
+#include <cmath>
 
 namespace LiveKit
 {
@@ -51,9 +52,12 @@ namespace LiveKit
 		ost->enc = c;
 		c->codec_id = video_codec_id;
 
+		static double a = 0.078;
+		static double b = 0.2027;
 		double mega_pixels = (double)(width * height) / 1000000.0;
-		double mega_bps = -0.625*mega_pixels* mega_pixels + 3.22*mega_pixels;
+		double mega_bps = (sqrt(b*b + 4 * a*mega_pixels) - b) / (2 * a);
 		c->bit_rate = (int64_t)(mega_bps*1000000.0);
+		printf("%d\n", c->bit_rate);
 		c->width = width;
 		c->height = height;
 		ost->st->time_base = { 1, fps };

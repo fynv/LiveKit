@@ -78,6 +78,22 @@ WindowCapture => Viewer
 WindowCapture => Recorder
 ```
 
+### Compositing
+A Compositor object is one that actually works like OBS Studio. It can take in multiple VideoSources and put them at difference places to form a scene.
+
+```
+ImageFile => Compositor
+Camera => Compositor
+```
+
+Like a Viewer, a compositor maintains its own window which shows the composited result.
+
+Optionally, it writes to one or more VideoTargets. You can use it to record the composited video.
+
+```
+Compsitor => VideoPort => Recorder
+```
+
 Unlike OBS Studio, LiveKit doesn't have a dedicated audio mixer. However, there are some components capables of audio capturing or playback. The tool [Virtual Audio Cable](https://vb-audio.com/Cable/) can be very helpful if you want to connect these components together.
 
 ## License

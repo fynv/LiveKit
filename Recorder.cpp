@@ -50,7 +50,10 @@ namespace LiveKit
 		AVCodecContext *c = avcodec_alloc_context3(codec);
 		ost->enc = c;
 		c->codec_id = video_codec_id;
-		c->bit_rate = width * height * 3;
+
+		double mega_pixels = (double)(width * height) / 1000000.0;
+		double mega_bps = -0.625*mega_pixels* mega_pixels + 3.22*mega_pixels;
+		c->bit_rate = (int64_t)(mega_bps*1000000.0);
 		c->width = width;
 		c->height = height;
 		ost->st->time_base = { 1, fps };

@@ -19,6 +19,36 @@ void* ImageFileGetSourcePtr(void* ptr);
 int ImageFileWidth(void* ptr);
 int ImageFileHeight(void* ptr);
 
+void* AudioInputDeviceListCreate();
+void* AudioOutputDeviceListCreate();
+
+void* MediaInfoCreate(const char* fn);
+void MediaInfoDestroy(void* ptr);
+double MediaInfoGetDuration(void* ptr);
+int MediaInfoHasVideo(void* ptr);
+int MediaInfoVideoWidth(void* ptr);
+int MediaInfoVideoHeight(void* ptr);
+double MediaInfoVideoFPS(void* ptr);
+int MediaInfoVideoBitrate(void* ptr);
+int MediaInfoHasAudio(void* ptr);
+int MediaInfoAudioSampleRate(void* ptr);
+int MediaInfoAudioNumberOfChannels(void* ptr);
+int MediaInfoAudioBitrate(void* ptr);
+
+void* PlayerCreate(const char* fn, int play_audio, int play_video, int audio_device_id);
+void PlayerDestroy(void* ptr);
+void PlayerAddTarget(void* ptr, void* p_target);
+double PlayerGetDuration(void* ptr);
+int PlayerIsPlaying(void* ptr);
+int PlayerIsEofReached(void* ptr);
+double PlayerGetPosition(void* ptr);
+int PlayerVideoWidth(void* ptr);
+int PlayerVideoHeight(void* ptr);
+void PlayerStop(void* ptr);
+void PlayerStart(void* ptr);
+void PlayerSetPosition(void* ptr, double pos);
+void PlayerSetAudioDevice(void* ptr, int audio_device_id);
+
 void* CameraListCreate();
 
 void* CameraCreate(int idx);
@@ -38,8 +68,6 @@ void* WindowListCreate();
 void* WindowCaptureCreate(int idx);
 void WindowCaptureDestroy(void* ptr);
 void* WindowCaptureGetSourcePtr(void* ptr);
-
-void* AudioInputDeviceListCreate();
 
 void* RecorderCreate(const char* filename, int mp4, int video_width, int video_height, int audio_device_id);
 void RecorderDestroy(void* ptr);
@@ -99,6 +127,88 @@ class ImageFile: # video-source
     def size(self):
         return Native.ImageFileWidth(self.cptr), Native.ImageFileHeight(self.cptr)
 
+class AudioInputDeviceList(StringList):
+    def __init__(self):
+        self.cptr = Native.AudioInputDeviceListCreate()
+
+class AudioOutputDeviceList(StringList):
+    def __init__(self):
+        self.cptr = Native.AudioOutputDeviceListCreate() 
+
+class MediaInfo:
+    def __init__(self, filename):
+        self.cptr = Native.MediaInfoCreate(filename.encode('mbcs'))
+
+    def __del__(self):
+        Native.MediaInfoDestroy(self.cptr)
+
+    def duration(self):
+        return Native.MediaInfoGetDuration(self.cptr)
+
+    def has_video(self):
+        return Native.MediaInfoHasVideo(self.cptr)!=0
+
+    def video_size(self):
+        return (Native.MediaInfoVideoWidth(self.cptr), Native.MediaInfoVideoHeight(self.cptr))
+
+    def video_fps(self):
+        return Native.MediaInfoVideoFPS(self.cptr)
+
+    def video_bitrate(self):
+        return Native.MediaInfoVideoBitrate(self.cptr)
+
+    def has_audio(self):
+        return Native.MediaInfoHasAudio(self.cptr)!=0
+
+    def audio_sample_rate(self):
+        return Native.MediaInfoAudioSampleRate(self.cptr)
+
+    def audio_number_of_channels(self):
+        return Native.MediaInfoAudioNumberOfChannels(self.cptr)
+
+    def audio_bitrate(self):
+        return Native.MediaInfoAudioBitrate(self.cptr)
+
+class Player:
+    def __init__(self, filename, play_audio = True, play_video = True, audio_device_id = 0):
+        self.cptr = Native.PlayerCreate(filename.encode('mbcs'), play_audio, play_video, audio_device_id)
+        self.targets = []
+
+    def __del__(self):
+        Native.PlayerDestroy(self.cptr)
+
+    def add_target(self, target): # slots for video-targets
+        self.targets += [target]
+        Native.PlayerAddTarget(self.cptr, target.target_ptr)
+
+    def get_duration(self):
+        return Native.PlayerGetDuration(self.cptr)
+
+    def is_playing(self):
+        return Native.PlayerIsPlaying(self.cptr)!=0
+
+    def is_eof_reached(self):
+        return Native.PlayerIsEofReached(self.cptr)!=0
+
+    def get_position(self):
+        return Native.PlayerGetPosition(self.cptr)
+
+    def video_size(self):
+        return Native.PlayerVideoWidth(self.cptr), Native.PlayerVideoHeight(self.cptr)
+
+    def stop(self):
+        Native.PlayerStop(self.cptr)
+
+    def start(self):
+        Native.PlayerStart(self.cptr)
+
+    def set_position(self, pos):
+        Native.PlayerSetPosition(self.cptr, pos)
+
+    def set_audio_device(self, audio_device_id):
+        Native.PlayerSetAudioDevice(self.cptr, audio_device_id)
+
+
 class CameraList(StringList):
     def __init__(self):
         self.cptr = Native.CameraListCreate()
@@ -143,10 +253,6 @@ class WindowCapture: # video-source
 
     def __del__(self):
         Native.WindowCaptureDestroy(self.cptr)
-
-class AudioInputDeviceList(StringList):
-    def __init__(self):
-        self.cptr = Native.AudioInputDeviceListCreate()
 
 class Recorder:
     def __init__(self, filename, mp4, video_width, video_height, audio_device_id = -1):

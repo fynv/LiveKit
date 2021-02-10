@@ -21,6 +21,36 @@ extern "C"
 	PY_LiveKit_API int ImageFileWidth(void* ptr);
 	PY_LiveKit_API int ImageFileHeight(void* ptr);
 
+	PY_LiveKit_API void* AudioInputDeviceListCreate();
+	PY_LiveKit_API void* AudioOutputDeviceListCreate();
+
+	PY_LiveKit_API void* MediaInfoCreate(const char* fn);
+	PY_LiveKit_API void MediaInfoDestroy(void* ptr);
+	PY_LiveKit_API double MediaInfoGetDuration(void* ptr);
+	PY_LiveKit_API int MediaInfoHasVideo(void* ptr);
+	PY_LiveKit_API int MediaInfoVideoWidth(void* ptr);
+	PY_LiveKit_API int MediaInfoVideoHeight(void* ptr);
+	PY_LiveKit_API double MediaInfoVideoFPS(void* ptr);
+	PY_LiveKit_API int MediaInfoVideoBitrate(void* ptr);
+	PY_LiveKit_API int MediaInfoHasAudio(void* ptr);
+	PY_LiveKit_API int MediaInfoAudioSampleRate(void* ptr);
+	PY_LiveKit_API int MediaInfoAudioNumberOfChannels(void* ptr);
+	PY_LiveKit_API int MediaInfoAudioBitrate(void* ptr);
+
+	PY_LiveKit_API void* PlayerCreate(const char* fn, int play_audio, int play_video, int audio_device_id);
+	PY_LiveKit_API void PlayerDestroy(void* ptr);
+	PY_LiveKit_API void PlayerAddTarget(void* ptr, void* p_target);
+	PY_LiveKit_API double PlayerGetDuration(void* ptr);
+	PY_LiveKit_API int PlayerIsPlaying(void* ptr);
+	PY_LiveKit_API int PlayerIsEofReached(void* ptr);
+	PY_LiveKit_API double PlayerGetPosition(void* ptr);
+	PY_LiveKit_API int PlayerVideoWidth(void* ptr);
+	PY_LiveKit_API int PlayerVideoHeight(void* ptr);
+	PY_LiveKit_API void PlayerStop(void* ptr);
+	PY_LiveKit_API void PlayerStart(void* ptr);
+	PY_LiveKit_API void PlayerSetPosition(void* ptr, double pos);
+	PY_LiveKit_API void PlayerSetAudioDevice(void* ptr, int audio_device_id);
+
 	PY_LiveKit_API void* CameraListCreate();
 
 	PY_LiveKit_API void* CameraCreate(int idx);
@@ -40,8 +70,6 @@ extern "C"
 	PY_LiveKit_API void* WindowCaptureCreate(int idx);
 	PY_LiveKit_API void WindowCaptureDestroy(void* ptr);
 	PY_LiveKit_API void* WindowCaptureGetSourcePtr(void* ptr);
-
-	PY_LiveKit_API void* AudioInputDeviceListCreate();
 
 	PY_LiveKit_API void* RecorderCreate(const char* filename, int mp4, int video_width, int video_height, int audio_device_id);
 	PY_LiveKit_API void RecorderDestroy(void* ptr);
@@ -66,6 +94,7 @@ extern "C"
 
 #include <VideoPort.h>
 #include <ImageFile.h>
+#include <Player.h>
 #include <Camera.h>
 #include <Viewer.h>
 #include <WindowCapture.h>
@@ -75,6 +104,9 @@ using namespace LiveKit;
 
 #include <vector>
 #include <string>
+
+#include <Windows.h>
+#include <mmsystem.h>
 
 void StrListDestroy(void* ptr)
 {
@@ -147,6 +179,196 @@ int ImageFileHeight(void* ptr)
 	ImageFile* imgfile = (ImageFile*)ptr;
 	return imgfile->height();
 }
+
+void* AudioInputDeviceListCreate()
+{
+	static std::vector<std::string> s_devices;
+	if (s_devices.size() == 0)
+	{
+		unsigned num_dev = waveInGetNumDevs();
+		WAVEINCAPS waveInDevCaps;
+		for (unsigned i = 0; i < num_dev; i++)
+		{
+			waveInGetDevCaps(i, &waveInDevCaps, sizeof(WAVEINCAPS));
+			s_devices.push_back(waveInDevCaps.szPname);
+		}
+	}
+	std::vector<std::string>* lst = new std::vector<std::string>;
+	*lst = s_devices;
+	return lst;
+}
+
+void* AudioOutputDeviceListCreate()
+{
+	static std::vector<std::string> s_devices;
+	if (s_devices.size() == 0)
+	{
+		unsigned num_dev = waveOutGetNumDevs();
+		WAVEOUTCAPS waveOutDevCaps;
+		for (unsigned i = 0; i < num_dev; i++)
+		{
+			waveOutGetDevCaps(i, &waveOutDevCaps, sizeof(WAVEOUTCAPS));
+			s_devices.push_back(waveOutDevCaps.szPname);
+		}
+	}
+	std::vector<std::string>* lst = new std::vector<std::string>;
+	*lst = s_devices;
+	return lst;
+}
+
+void* MediaInfoCreate(const char* fn)
+{
+	MediaInfo* info = new MediaInfo;
+	get_media_info(fn, info);
+	return info;
+}
+
+void MediaInfoDestroy(void* ptr)
+{
+	MediaInfo* info = (MediaInfo*)ptr;
+	delete info;
+}
+
+
+double MediaInfoGetDuration(void* ptr)
+{
+	MediaInfo* info = (MediaInfo*)ptr;
+	return (double)info->duration/(1000000.0);
+}
+
+int MediaInfoHasVideo(void* ptr)
+{
+	MediaInfo* info = (MediaInfo*)ptr;
+	return info->has_video ? 1 : 0;
+}
+
+
+int MediaInfoVideoWidth(void* ptr)
+{
+	MediaInfo* info = (MediaInfo*)ptr;
+	return info->video_width;
+}
+
+int MediaInfoVideoHeight(void* ptr)
+{
+	MediaInfo* info = (MediaInfo*)ptr;
+	return info->video_height;
+}
+
+double MediaInfoVideoFPS(void* ptr)
+{
+	MediaInfo* info = (MediaInfo*)ptr;
+	return info->video_fps;
+}
+
+int MediaInfoVideoBitrate(void* ptr)
+{
+	MediaInfo* info = (MediaInfo*)ptr;
+	return info->video_bitrate;
+}
+
+int MediaInfoHasAudio(void* ptr)
+{
+	MediaInfo* info = (MediaInfo*)ptr;
+	return info->has_audio ? 1 : 0;
+}
+
+int MediaInfoAudioSampleRate(void* ptr)
+{
+	MediaInfo* info = (MediaInfo*)ptr;
+	return info->audio_sample_rate;
+}
+
+int MediaInfoAudioNumberOfChannels(void* ptr)
+{
+	MediaInfo* info = (MediaInfo*)ptr;
+	return info->audio_number_of_channels;
+}
+
+int MediaInfoAudioBitrate(void* ptr)
+{
+	MediaInfo* info = (MediaInfo*)ptr;
+	return info->audio_bitrate;
+}
+
+void* PlayerCreate(const char* fn, int play_audio, int play_video, int audio_device_id)
+{
+	return new Player(fn, play_audio != 0, play_video != 0, audio_device_id);
+}
+
+void PlayerDestroy(void* ptr)
+{
+	Player* player = (Player*)ptr;
+	delete player;
+}
+
+void PlayerAddTarget(void* ptr, void* p_target)
+{
+	Player* player = (Player*)ptr;
+	VideoTarget* target = (VideoTarget*)p_target;
+	player->AddTarget(target);
+}
+
+double PlayerGetDuration(void* ptr)
+{
+	Player* player = (Player*)ptr;
+	return (double)player->get_duration() / 1000000.0;
+}
+
+int PlayerIsPlaying(void* ptr)
+{
+	Player* player = (Player*)ptr;
+	return player->is_playing() ? 1 : 0;
+}
+
+int PlayerIsEofReached(void* ptr)
+{
+	Player* player = (Player*)ptr;
+	return player->is_eof_reached() ? 1 : 0;
+}
+
+double PlayerGetPosition(void* ptr)
+{
+	Player* player = (Player*)ptr;
+	return (double)player->get_position() / 1000000.0;
+}
+
+int PlayerVideoWidth(void* ptr)
+{
+	Player* player = (Player*)ptr;
+	return player->video_width();
+}
+
+int PlayerVideoHeight(void* ptr)
+{
+	Player* player = (Player*)ptr;
+	return player->video_height();
+}
+
+void PlayerStop(void* ptr)
+{
+	Player* player = (Player*)ptr;
+	player->stop();
+}
+
+void PlayerStart(void* ptr)
+{
+	Player* player = (Player*)ptr;
+	player->start();
+}
+
+void PlayerSetPosition(void* ptr, double pos)
+{
+	Player* player = (Player*)ptr;
+	player->set_position((uint64_t)(pos*1000000.0));
+}
+
+void PlayerSetAudioDevice(void* ptr, int audio_device_id)
+{
+	Player* player = (Player*)ptr;
+	player->set_audio_device(audio_device_id);
+}
+
 
 void* CameraListCreate()
 {
@@ -237,27 +459,6 @@ void* WindowCaptureGetSourcePtr(void* ptr)
 {
 	WindowCapture* wc = (WindowCapture*)ptr;
 	return (VideoSource*)wc;
-}
-
-#include <Windows.h>
-#include <mmsystem.h>
-
-void* AudioInputDeviceListCreate()
-{
-	static std::vector<std::string> s_devices;
-	if (s_devices.size() == 0)
-	{
-		unsigned num_dev = waveInGetNumDevs();
-		WAVEINCAPS waveInDevCaps;
-		for (unsigned i = 0; i < num_dev; i++)
-		{
-			waveInGetDevCaps(i, &waveInDevCaps, sizeof(WAVEINCAPS));
-			s_devices.push_back(waveInDevCaps.szPname);
-		}
-	}
-	std::vector<std::string>* lst = new std::vector<std::string>;
-	*lst = s_devices;
-	return lst;
 }
 
 void* RecorderCreate(const char* filename, int mp4, int video_width, int video_height, int audio_device_id)

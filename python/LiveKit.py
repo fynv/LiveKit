@@ -38,16 +38,29 @@ int MediaInfoAudioBitrate(void* ptr);
 void* PlayerCreate(const char* fn, int play_audio, int play_video, int audio_device_id);
 void PlayerDestroy(void* ptr);
 void PlayerAddTarget(void* ptr, void* p_target);
-double PlayerGetDuration(void* ptr);
+int PlayerVideoWidth(void* ptr);
+int PlayerVideoHeight(void* ptr);    
 int PlayerIsPlaying(void* ptr);
 int PlayerIsEofReached(void* ptr);
+double PlayerGetDuration(void* ptr);
 double PlayerGetPosition(void* ptr);
-int PlayerVideoWidth(void* ptr);
-int PlayerVideoHeight(void* ptr);
 void PlayerStop(void* ptr);
 void PlayerStart(void* ptr);
 void PlayerSetPosition(void* ptr, double pos);
 void PlayerSetAudioDevice(void* ptr, int audio_device_id);
+
+void* LazyPlayerCreate(const char* fn);
+void LazyPlayerDestroy(void* ptr);
+void* LazyPlayerGetSourcePtr(void* ptr);
+int LazyPlayerVideoWidth(void* ptr);
+int LazyPlayerVideoHeight(void* ptr);
+int LazyPlayerIsPlaying(void* ptr);
+int LazyPlayerIsEofReached(void* ptr);
+double LazyPlayerGetDuration(void* ptr);
+double LazyPlayerGetPosition(void* ptr);
+void LazyPlayerStop(void* ptr);
+void LazyPlayerStart(void* ptr);
+void LazyPlayerSetPosition(void* ptr, double pos);
 
 void* CameraListCreate();
 
@@ -181,8 +194,8 @@ class Player:
         self.targets += [target]
         Native.PlayerAddTarget(self.cptr, target.target_ptr)
 
-    def get_duration(self):
-        return Native.PlayerGetDuration(self.cptr)
+    def video_size(self):
+        return Native.PlayerVideoWidth(self.cptr), Native.PlayerVideoHeight(self.cptr)
 
     def is_playing(self):
         return Native.PlayerIsPlaying(self.cptr)!=0
@@ -190,11 +203,11 @@ class Player:
     def is_eof_reached(self):
         return Native.PlayerIsEofReached(self.cptr)!=0
 
+    def get_duration(self):
+        return Native.PlayerGetDuration(self.cptr)
+
     def get_position(self):
         return Native.PlayerGetPosition(self.cptr)
-
-    def video_size(self):
-        return Native.PlayerVideoWidth(self.cptr), Native.PlayerVideoHeight(self.cptr)
 
     def stop(self):
         Native.PlayerStop(self.cptr)
@@ -207,6 +220,38 @@ class Player:
 
     def set_audio_device(self, audio_device_id):
         Native.PlayerSetAudioDevice(self.cptr, audio_device_id)
+
+class LazyPlayer: # video-source
+    def __init__(self, filename):
+        self.cptr = Native.LazyPlayerCreate(filename.encode('mbcs'))
+        self.source_ptr = Native.LazyPlayerGetSourcePtr(self.cptr)
+
+    def __del__(self):
+        Native.LazyPlayerDestroy(self.cptr)
+
+    def video_size(self):
+        return Native.LazyPlayerVideoWidth(self.cptr), Native.LazyPlayerVideoHeight(self.cptr)
+
+    def is_playing(self):
+        return Native.LazyPlayerIsPlaying(self.cptr)!=0
+
+    def is_eof_reached(self):
+        return Native.LazyPlayerIsEofReached(self.cptr)!=0
+
+    def get_duration(self):
+        return Native.LazyPlayerGetDuration(self.cptr)
+
+    def get_position(self):
+        return Native.LazyPlayerGetPosition(self.cptr)
+
+    def stop(self):
+        Native.LazyPlayerStop(self.cptr)
+
+    def start(self):
+        Native.LazyPlayerStart(self.cptr)
+
+    def set_position(self, pos):
+        Native.LazyPlayerSetPosition(self.cptr, pos)
 
 
 class CameraList(StringList):

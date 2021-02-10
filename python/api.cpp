@@ -40,16 +40,29 @@ extern "C"
 	PY_LiveKit_API void* PlayerCreate(const char* fn, int play_audio, int play_video, int audio_device_id);
 	PY_LiveKit_API void PlayerDestroy(void* ptr);
 	PY_LiveKit_API void PlayerAddTarget(void* ptr, void* p_target);
-	PY_LiveKit_API double PlayerGetDuration(void* ptr);
+	PY_LiveKit_API int PlayerVideoWidth(void* ptr);
+	PY_LiveKit_API int PlayerVideoHeight(void* ptr);	
 	PY_LiveKit_API int PlayerIsPlaying(void* ptr);
 	PY_LiveKit_API int PlayerIsEofReached(void* ptr);
+	PY_LiveKit_API double PlayerGetDuration(void* ptr);
 	PY_LiveKit_API double PlayerGetPosition(void* ptr);
-	PY_LiveKit_API int PlayerVideoWidth(void* ptr);
-	PY_LiveKit_API int PlayerVideoHeight(void* ptr);
 	PY_LiveKit_API void PlayerStop(void* ptr);
 	PY_LiveKit_API void PlayerStart(void* ptr);
 	PY_LiveKit_API void PlayerSetPosition(void* ptr, double pos);
 	PY_LiveKit_API void PlayerSetAudioDevice(void* ptr, int audio_device_id);
+
+	PY_LiveKit_API void* LazyPlayerCreate(const char* fn);
+	PY_LiveKit_API void LazyPlayerDestroy(void* ptr);
+	PY_LiveKit_API void* LazyPlayerGetSourcePtr(void* ptr);
+	PY_LiveKit_API int LazyPlayerVideoWidth(void* ptr);
+	PY_LiveKit_API int LazyPlayerVideoHeight(void* ptr);
+	PY_LiveKit_API int LazyPlayerIsPlaying(void* ptr);
+	PY_LiveKit_API int LazyPlayerIsEofReached(void* ptr);
+	PY_LiveKit_API double LazyPlayerGetDuration(void* ptr);
+	PY_LiveKit_API double LazyPlayerGetPosition(void* ptr);
+	PY_LiveKit_API void LazyPlayerStop(void* ptr);
+	PY_LiveKit_API void LazyPlayerStart(void* ptr);
+	PY_LiveKit_API void LazyPlayerSetPosition(void* ptr, double pos);
 
 	PY_LiveKit_API void* CameraListCreate();
 
@@ -95,6 +108,7 @@ extern "C"
 #include <VideoPort.h>
 #include <ImageFile.h>
 #include <Player.h>
+#include <LazyPlayer.h>
 #include <Camera.h>
 #include <Viewer.h>
 #include <WindowCapture.h>
@@ -309,10 +323,17 @@ void PlayerAddTarget(void* ptr, void* p_target)
 	player->AddTarget(target);
 }
 
-double PlayerGetDuration(void* ptr)
+
+int PlayerVideoWidth(void* ptr)
 {
 	Player* player = (Player*)ptr;
-	return (double)player->get_duration() / 1000000.0;
+	return player->video_width();
+}
+
+int PlayerVideoHeight(void* ptr)
+{
+	Player* player = (Player*)ptr;
+	return player->video_height();
 }
 
 int PlayerIsPlaying(void* ptr)
@@ -327,22 +348,16 @@ int PlayerIsEofReached(void* ptr)
 	return player->is_eof_reached() ? 1 : 0;
 }
 
+double PlayerGetDuration(void* ptr)
+{
+	Player* player = (Player*)ptr;
+	return (double)player->get_duration() / 1000000.0;
+}
+
 double PlayerGetPosition(void* ptr)
 {
 	Player* player = (Player*)ptr;
 	return (double)player->get_position() / 1000000.0;
-}
-
-int PlayerVideoWidth(void* ptr)
-{
-	Player* player = (Player*)ptr;
-	return player->video_width();
-}
-
-int PlayerVideoHeight(void* ptr)
-{
-	Player* player = (Player*)ptr;
-	return player->video_height();
 }
 
 void PlayerStop(void* ptr)
@@ -369,6 +384,76 @@ void PlayerSetAudioDevice(void* ptr, int audio_device_id)
 	player->set_audio_device(audio_device_id);
 }
 
+void* LazyPlayerCreate(const char* fn)
+{
+	return new LazyPlayer(fn);
+}
+
+void LazyPlayerDestroy(void* ptr)
+{
+	LazyPlayer* player = (LazyPlayer*)ptr;
+	delete player;
+}
+
+void* LazyPlayerGetSourcePtr(void* ptr)
+{
+	LazyPlayer* player = (LazyPlayer*)ptr;
+	return (VideoSource*)player;
+}
+
+int LazyPlayerVideoWidth(void* ptr)
+{
+	LazyPlayer* player = (LazyPlayer*)ptr;
+	return player->video_width();
+}
+
+int LazyPlayerVideoHeight(void* ptr)
+{
+	LazyPlayer* player = (LazyPlayer*)ptr;
+	return player->video_height();
+}
+
+int LazyPlayerIsPlaying(void* ptr)
+{
+	LazyPlayer* player = (LazyPlayer*)ptr;
+	return player->is_playing() ? 1 : 0;
+}
+
+int LazyPlayerIsEofReached(void* ptr)
+{
+	LazyPlayer* player = (LazyPlayer*)ptr;
+	return player->is_eof_reached() ? 1 : 0;
+}
+
+double LazyPlayerGetDuration(void* ptr)
+{
+	LazyPlayer* player = (LazyPlayer*)ptr;
+	return (double)player->get_duration() / 1000000.0;
+}
+
+double LazyPlayerGetPosition(void* ptr)
+{
+	LazyPlayer* player = (LazyPlayer*)ptr;
+	return (double)player->get_position() / 1000000.0;
+}
+
+void LazyPlayerStop(void* ptr)
+{
+	LazyPlayer* player = (LazyPlayer*)ptr;
+	player->stop();
+}
+
+void LazyPlayerStart(void* ptr)
+{
+	LazyPlayer* player = (LazyPlayer*)ptr;
+	player->start();
+}
+
+void LazyPlayerSetPosition(void* ptr, double pos)
+{
+	LazyPlayer* player = (LazyPlayer*)ptr;
+	player->set_position((uint64_t)(pos*1000000.0));
+}
 
 void* CameraListCreate()
 {

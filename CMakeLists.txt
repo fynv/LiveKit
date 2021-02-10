@@ -34,6 +34,7 @@ internal/RenderingOGL.cpp
 VideoPort.cpp
 ImageFile.cpp
 Player.cpp
+LazyPlayer.cpp
 Camera.cpp
 WindowCapture.cpp
 Viewer.cpp
@@ -45,6 +46,7 @@ set (LIB_HEADERS
 VideoPort.h
 ImageFile.h
 Player.h
+LazyPlayer.h
 Camera.h
 WindowCapture.h
 Viewer.h

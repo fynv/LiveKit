@@ -53,13 +53,13 @@ namespace LiveKit
 			m_targets.push_back(target);
 		}
 
-		uint64_t get_duration() const { return m_duration; }
-		bool is_playing() const;
-		bool is_eof_reached() const;
-		uint64_t get_position() const;
-
 		int video_width() const { return m_video_width; }
 		int video_height() const { return m_video_height; }
+
+		bool is_playing() const;
+		bool is_eof_reached() const;
+		uint64_t get_duration() const { return m_duration; }
+		uint64_t get_position() const;		
 
 		void stop();
 		void start();

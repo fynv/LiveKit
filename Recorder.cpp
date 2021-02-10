@@ -1,8 +1,6 @@
 #include "Recorder.h"
 #include "Image.h"
 #include "VideoPort.h"
-#include "BufferQueue.h"
-#include "SoundRecorder.h"
 #include "Utils.h"
 
 extern "C"
@@ -16,9 +14,172 @@ extern "C"
 }
 #include <thread>
 #include <cmath>
+#include <queue>
+#include <Windows.h>
+#include <mmsystem.h>
+#include <mmreg.h>
 
 namespace LiveKit
 {
+	class Buffer
+	{
+	public:
+		short* m_data;
+		Buffer(size_t size)
+		{
+			m_data = new short[size];
+		}
+		~Buffer()
+		{
+			delete[] m_data;
+		}
+	};
+
+	class BufferQueue
+	{
+	public:
+		BufferQueue()
+		{
+			InitializeCriticalSectionAndSpinCount(&m_cs, 0x00000400);
+			m_hSemaphore = CreateSemaphore(NULL, 0, ~(1 << 31), NULL);
+		}
+
+		~BufferQueue()
+		{
+			while (m_queue.size() > 0)
+			{
+				Buffer* buf = PopBuffer();
+				delete buf;
+			}
+			CloseHandle(m_hSemaphore);
+			DeleteCriticalSection(&m_cs);
+		}
+
+		size_t Size()
+		{
+			return m_queue.size();
+		}
+
+		void PushBuffer(Buffer* buf)
+		{
+			EnterCriticalSection(&m_cs);
+			m_queue.push(buf);
+			LeaveCriticalSection(&m_cs);
+			ReleaseSemaphore(m_hSemaphore, 1, NULL);
+		}
+
+		Buffer* PopBuffer()
+		{
+			WaitForSingleObject(m_hSemaphore, INFINITE);
+			EnterCriticalSection(&m_cs);
+			Buffer* ret = m_queue.front();
+			m_queue.pop();
+			LeaveCriticalSection(&m_cs);
+			return ret;
+		}
+
+	private:
+		std::queue<Buffer*> m_queue;
+		CRITICAL_SECTION m_cs;
+		HANDLE m_hSemaphore;
+	};
+
+	class SoundRecorder
+	{
+	public:
+		SoundRecorder(int devId, size_t samples_per_buffer) : m_samples_per_buffer(samples_per_buffer)
+		{
+			WAVEFORMATEX format = {};
+			format.wFormatTag = WAVE_FORMAT_PCM;
+			format.nChannels = 2;
+			format.nSamplesPerSec = 44100;
+			format.nAvgBytesPerSec = format.nSamplesPerSec * format.nChannels * sizeof(short);
+			format.nBlockAlign = sizeof(short) * format.nChannels;
+			format.wBitsPerSample = 16;
+			format.cbSize = 0;
+
+			waveInOpen(&m_WaveIn, devId, &format, (DWORD_PTR)(s_SoundInCallback), (DWORD_PTR)this, CALLBACK_FUNCTION);
+
+			m_Buffer = new short[samples_per_buffer * format.nChannels * 2];
+			m_Buffer1 = m_Buffer;
+			m_Buffer2 = m_Buffer + samples_per_buffer * format.nChannels;
+			memset(m_Buffer, 0, sizeof(short)*samples_per_buffer * format.nChannels * 2);
+
+			m_WaveHeader1.lpData = (char *)m_Buffer1;
+			m_WaveHeader1.dwBufferLength = (DWORD)(samples_per_buffer * format.nChannels * sizeof(short));
+			m_WaveHeader1.dwFlags = 0;
+			waveInPrepareHeader(m_WaveIn, &m_WaveHeader1, sizeof(WAVEHDR));
+			waveInAddBuffer(m_WaveIn, &m_WaveHeader1, sizeof(WAVEHDR));
+
+			m_WaveHeader2.lpData = (char *)m_Buffer2;
+			m_WaveHeader2.dwBufferLength = (DWORD)(samples_per_buffer* format.nChannels * sizeof(short));
+			m_WaveHeader2.dwFlags = 0;
+			waveInPrepareHeader(m_WaveIn, &m_WaveHeader2, sizeof(WAVEHDR));
+			waveInAddBuffer(m_WaveIn, &m_WaveHeader2, sizeof(WAVEHDR));		
+
+			m_isReceiving = true;
+			waveInStart(m_WaveIn);
+		}
+
+		~SoundRecorder()
+		{
+			m_isReceiving = false;
+			waveInStop(m_WaveIn);
+			waveInReset(m_WaveIn);
+			waveInUnprepareHeader(m_WaveIn, &m_WaveHeader1, sizeof(WAVEHDR));
+			waveInUnprepareHeader(m_WaveIn, &m_WaveHeader2, sizeof(WAVEHDR));
+			waveInClose(m_WaveIn);
+			
+			delete[] m_Buffer;
+		}
+
+		Buffer* get_buffer()
+		{
+			return m_buffer_queue.PopBuffer();
+		}
+
+		void recycle_buffer(Buffer* buf)
+		{
+			m_recycler.PushBuffer(buf);
+		}
+
+	private:
+		size_t m_samples_per_buffer;
+		BufferQueue m_buffer_queue;
+		BufferQueue m_recycler;
+
+		bool m_isReceiving = false;
+		HWAVEIN m_WaveIn;
+		short  *m_Buffer;
+		short  *m_Buffer1, *m_Buffer2;
+		WAVEHDR m_WaveHeader1, m_WaveHeader2;
+
+		static void __stdcall s_SoundInCallback(HWAVEIN hwi, UINT uMsg, DWORD_PTR dwInstance, DWORD_PTR dwParam1, DWORD_PTR dwParam2)
+		{
+			if (uMsg == WIM_DATA)
+			{
+				SoundRecorder* self = (SoundRecorder*)dwInstance;
+				WAVEHDR* pwhr = (WAVEHDR*)dwParam1;
+				if (!self->m_isReceiving) return;
+				self->recordBuf((short*)pwhr->lpData);
+				waveInAddBuffer(hwi, pwhr, sizeof(WAVEHDR));
+			}
+		}
+
+		void recordBuf(const short* data)
+		{
+			unsigned size = (unsigned)(m_samples_per_buffer * sizeof(short) * 2);
+			Buffer* newBuf;
+			if (m_recycler.Size() > 0)
+				newBuf = m_recycler.PopBuffer();
+			else
+				newBuf = new Buffer(m_samples_per_buffer * 2);
+			memcpy(newBuf->m_data, data, size);
+			m_buffer_queue.PushBuffer(newBuf);
+		}
+
+	};
+
 	static const AVCodecID video_codec_id = AV_CODEC_ID_H264;
 	static const AVCodecID audio_codec_id = AV_CODEC_ID_AAC;
 	static const AVPixelFormat pix_fmt = AV_PIX_FMT_YUV420P;

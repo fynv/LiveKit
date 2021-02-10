@@ -30,7 +30,6 @@ link_directories(${LIB_DIR})
 set (LIB_SOURCES
 internal/Image.cpp
 internal/RenderingOGL.cpp
-internal/SoundRecorder.cpp
 VideoPort.cpp
 ImageFile.cpp
 Camera.cpp
@@ -54,8 +53,6 @@ set(INTERNAL_HEADERS
 internal/Utils.h
 internal/Image.h
 internal/RenderingOGL.h
-internal/BufferQueue.h
-internal/SoundRecorder.h
 )
 
 add_definitions(${DEFINES})

@@ -62,6 +62,21 @@ Here is an incomplete list of what can be done at the moment.
 ImageFile => Viewer
 ```
 
+### Media-file playback
+A Player object is capable of playback of a media file containing both video and audio streams. It has its own worker threads. Video frames can be written to one or more VideoTargets.
+
+For a straight playback:
+
+```
+Player => VideoPort => Viewer
+```
+
+A LazyPlayer object playback only the video part of a media file. It works in lazy-mode, and is a VideoSource itself.
+
+```
+LazyPlayer => Viewer
+```
+
 ### Viewing an camera
 ```
 Camera => VideoPort => Viewer
@@ -83,7 +98,10 @@ A Compositor object is one that actually works like OBS Studio. It can take in m
 
 ```
 ImageFile => Compositor
-Camera => Compositor
+Player => VideoPort => Compositor
+LazyPlayer => Compositor
+Camera => VideoPort =>Compositor
+WindowCapture => Compositor
 ```
 
 Like a Viewer, a compositor maintains its own window which shows the composited result.

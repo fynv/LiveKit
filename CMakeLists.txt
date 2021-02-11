@@ -1,6 +1,9 @@
 cmake_minimum_required (VERSION 3.0)
 project(LiveKit)
 
+SET(GLFW_BUILD_DOCS false)
+SET(GLFW_INSTALL false)
+
 add_subdirectory(thirdparty/glfw)
 add_subdirectory(thirdparty/glew-cmake)
 

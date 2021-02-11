@@ -2,6 +2,12 @@ cmake_minimum_required (VERSION 3.0)
 
 project(PyLiveKit)
 
+add_custom_target(Run_CFFIBuild
+COMMAND python LiveKit/cffi_build.py
+WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+COMMENT "Running cffi_build")
+
+
 set (SRC
 api.cpp
 )
@@ -32,24 +38,18 @@ target_link_libraries(PyLiveKit LiveKit)
 
 
 if (WIN32) 
-install(TARGETS PyLiveKit RUNTIME DESTINATION test_python)
+install(TARGETS PyLiveKit RUNTIME DESTINATION test_python/LiveKit)
 else()
-install(TARGETS PyLiveKit DESTINATION test_python)
+install(TARGETS PyLiveKit DESTINATION test_python/LiveKit)
 endif()
 
 set(PYTHON
-LiveKit.py
-test_image.py
-test_camera.py
-test_window_capture.py
-test_window_record.py
-test_compositor.py
-test_ocv_push.py
-test_ocv_pull.py
-
-sign_green.png
-sign_red.png
+LiveKit/__init__.py
+LiveKit/cffi.py
 )
 
-install(FILES ${PYTHON} DESTINATION test_python)
+install(FILES ${PYTHON} DESTINATION test_python/LiveKit)
+install(FILES setup.py DESTINATION test_python)
+
+add_subdirectory(test)
 

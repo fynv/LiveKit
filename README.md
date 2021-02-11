@@ -11,7 +11,7 @@ conda install -c fyplus livekit
 
 ## Building from Source-code
 
-LiveKit current can be built for Windows x64 platforms.
+LiveKit currently can be built for Windows x64 platforms.
 
 Building for Windows x86 is possible if dependecies are available.
 

@@ -17,7 +17,7 @@ git clone --recursive https://github.com/fynv/LiveKit.git
 
 2. Download a FFMpeg prebuilt package
 
-For Windows x64, a prebuild package can be found at [https://www.gyan.dev/ffmpeg/builds/](https://www.gyan.dev/ffmpeg/builds/).
+For Windows x64, a prebuilt package can be found at [https://www.gyan.dev/ffmpeg/builds/](https://www.gyan.dev/ffmpeg/builds/).
 
 3. Create a "build" folder and build with CMake
 

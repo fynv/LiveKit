@@ -44,6 +44,8 @@ test_camera.py
 test_window_capture.py
 test_window_record.py
 test_compositor.py
+test_ocv_push.py
+test_ocv_pull.py
 
 sign_green.png
 sign_red.png

@@ -16,7 +16,7 @@ namespace LiveKit
 	
 	void VideoPort::write_image(const Image* image)
 	{
-		int this_buf = m_last_video_buf % 3;
+		int this_buf = (m_last_video_buf + 1) % 3;
 		m_timestamps[this_buf] = time_micro_sec();		
 		std::unique_ptr<Image>& p_this_buf = m_video_bufs[this_buf];
 		if (p_this_buf == nullptr || p_this_buf->width() != image->width() || p_this_buf->height() != image->height() || p_this_buf->has_alpha() != image->has_alpha())

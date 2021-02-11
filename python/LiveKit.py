@@ -8,6 +8,23 @@ void StrListDestroy(void* ptr);
 unsigned long long StrListSize(void* ptr);
 const char* StrListGet(void* ptr, int idx);
 
+void* PullerCreate(void* p_source);
+void PullerDestroy(void* ptr);
+void PullerPull(void* ptr);
+unsigned long long PullerTimestamp(void* ptr);
+int PullerHasAlpha(void* ptr);
+int PullerWidth(void* ptr);
+int PullerHeight(void* ptr);
+int PullerIsFlipped(void* ptr);
+void PullerGetData(void* ptr, unsigned char* data);
+
+void* PusherCreate(void* p_target);
+void PusherDestroy(void* ptr);
+void PusherSetSize(void* ptr, int width, int height, int has_alpha);
+void PusherSetFlipped(void* ptr, int flipped);
+void PusherSetData(void* ptr, const unsigned char* data);
+void PusherPush(void* ptr);
+
 void* VideoPortCreate();
 void VideoPortDestroy(void* ptr);
 void* VideoPortGetSourcePtr(void* ptr);
@@ -107,6 +124,8 @@ if os.name == 'nt':
 elif os.name == "posix":
     Native = ffi.dlopen('libPyLiveKit.so')
 
+import numpy as np
+
 class StringList:
     def __del__(self):
         Native.StrListDestroy(self.cptr)
@@ -120,21 +139,66 @@ class StringList:
     def to_pylist(self):
         return [self.get(i) for i in range(self.size())]
 
-class VideoPort: # video-source & video-target
+class VideoSource:
+    def __init__(self):
+        self.puller_ptr = Native.PullerCreate(self.source_ptr)
+
+    def __del__(self):
+        Native.PullerDestroy(self.puller_ptr)
+
+    def pull(self):
+        Native.PullerPull(self.puller_ptr)
+        timestamp = Native.PullerTimestamp(self.puller_ptr)
+        if timestamp == 0xFFFFFFFFFFFFFFFF:
+            return None, timestamp, False
+        chn = 3
+        if Native.PullerHasAlpha(self.puller_ptr)!=0:
+            chn = 4
+        width = Native.PullerWidth(self.puller_ptr)
+        height = Native.PullerHeight(self.puller_ptr)
+        is_flipped = Native.PullerIsFlipped(self.puller_ptr)        
+        arr = np.empty((height, width, chn), dtype=np.uint8)
+        Native.PullerGetData(self.puller_ptr, ffi.cast("unsigned char *", arr.__array_interface__['data'][0]))
+        return arr, timestamp, is_flipped
+
+class VideoTarget:
+    def __init__(self):
+        self.pusher_ptr = Native.PusherCreate(self.target_ptr)
+
+    def __del__(self):
+        Native.PusherDestroy(self.pusher_ptr)
+
+    def push(self, arr, is_flipped=False):
+        width = arr.shape[1]
+        height = arr.shape[0]
+        has_alpha = arr.shape[2]>3
+        Native.PusherSetSize(self.pusher_ptr, width, height, has_alpha)
+        Native.PusherSetFlipped(self.pusher_ptr, is_flipped)
+        Native.PusherSetData(self.pusher_ptr, ffi.cast("const unsigned char *", arr.__array_interface__['data'][0]))
+        Native.PusherPush(self.pusher_ptr)
+
+
+class VideoPort(VideoSource, VideoTarget):
     def __init__(self):
         self.cptr = Native.VideoPortCreate()
         self.source_ptr = Native.VideoPortGetSourcePtr(self.cptr)
         self.target_ptr = Native.VideoPortGetTargetPtr(self.cptr)
+        VideoSource.__init__(self)
+        VideoTarget.__init__(self)
 
     def __del__(self):
+        VideoTarget.__del__(self)
+        VideoSource.__del__(self)
         Native.VideoPortDestroy(self.cptr)
 
-class ImageFile: # video-source
+class ImageFile(VideoSource):
     def __init__(self, filename):
         self.cptr = Native.ImageFileCreate(filename.encode('mbcs'))
         self.source_ptr = Native.ImageFileGetSourcePtr(self.cptr)
+        VideoSource.__init__(self)
 
     def __del__(self):
+        VideoSource.__del__(self)
         Native.ImageFileDestroy(self.cptr)
 
     def size(self):
@@ -221,12 +285,14 @@ class Player:
     def set_audio_device(self, audio_device_id):
         Native.PlayerSetAudioDevice(self.cptr, audio_device_id)
 
-class LazyPlayer: # video-source
+class LazyPlayer(VideoSource):
     def __init__(self, filename):
         self.cptr = Native.LazyPlayerCreate(filename.encode('mbcs'))
         self.source_ptr = Native.LazyPlayerGetSourcePtr(self.cptr)
+        VideoSource.__init__(self)
 
     def __del__(self):
+        VideoSource.__del__(self)
         Native.LazyPlayerDestroy(self.cptr)
 
     def video_size(self):
@@ -291,12 +357,14 @@ class WindowList(StringList):
     def __init__(self):
         self.cptr = Native.WindowListCreate()
 
-class WindowCapture: # video-source
+class WindowCapture(VideoSource):
     def __init__(self, idx):
         self.cptr = Native.WindowCaptureCreate(idx)
         self.source_ptr = Native.WindowCaptureGetSourcePtr(self.cptr)
+        VideoSource.__init__(self)
 
     def __del__(self):
+        VideoSource.__del__(self)
         Native.WindowCaptureDestroy(self.cptr)
 
 class Recorder:

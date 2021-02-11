@@ -10,6 +10,23 @@ extern "C"
 	PY_LiveKit_API unsigned long long StrListSize(void* ptr);
 	PY_LiveKit_API const char* StrListGet(void* ptr, int idx);
 
+	PY_LiveKit_API void* PullerCreate(void* p_source);
+	PY_LiveKit_API void PullerDestroy(void* ptr);
+	PY_LiveKit_API void PullerPull(void* ptr);
+	PY_LiveKit_API unsigned long long PullerTimestamp(void* ptr);
+	PY_LiveKit_API int PullerHasAlpha(void* ptr);
+	PY_LiveKit_API int PullerWidth(void* ptr);
+	PY_LiveKit_API int PullerHeight(void* ptr);
+	PY_LiveKit_API int PullerIsFlipped(void* ptr);
+	PY_LiveKit_API void PullerGetData(void* ptr, unsigned char* data);
+
+	PY_LiveKit_API void* PusherCreate(void* p_target);
+	PY_LiveKit_API void PusherDestroy(void* ptr);
+	PY_LiveKit_API void PusherSetSize(void* ptr, int width, int height, int has_alpha);
+	PY_LiveKit_API void PusherSetFlipped(void* ptr, int flipped);
+	PY_LiveKit_API void PusherSetData(void* ptr, const unsigned char* data);
+	PY_LiveKit_API void PusherPush(void* ptr);
+
 	PY_LiveKit_API void* VideoPortCreate();
 	PY_LiveKit_API void VideoPortDestroy(void* ptr);
 	PY_LiveKit_API void* VideoPortGetSourcePtr(void* ptr);
@@ -106,6 +123,7 @@ extern "C"
 }
 
 #include <VideoPort.h>
+#include <Image.h>
 #include <ImageFile.h>
 #include <Player.h>
 #include <LazyPlayer.h>
@@ -138,6 +156,171 @@ const char* StrListGet(void* ptr, int idx)
 {
 	std::vector<std::string>* lst = (std::vector<std::string>*)ptr;
 	return (*lst)[idx].c_str();
+}
+
+class Puller
+{
+public:
+	Puller(VideoSource *source) : m_source(source)
+	{
+
+	}
+
+	~Puller(){}
+
+	void pull()
+	{
+		m_image = m_source->read_image(&m_timestamp);
+	}
+
+	uint64_t timestamp() const { return m_timestamp; }
+	bool has_alpha() const { return m_image->has_alpha(); }
+	int width() const { return m_image->width(); }
+	int height() const { return m_image->height(); }
+	bool is_flipped() const { return m_image->is_flipped(); }
+	void get_data(uint8_t* data) const
+	{
+		int width = this->width();
+		int height = this->height();
+		int chn = this->has_alpha() ? 4 : 3;
+		memcpy(data, m_image->data(), (size_t)width*height*chn);
+	}
+
+private:
+	VideoSource* m_source;
+	uint64_t m_timestamp;
+	const Image* m_image = nullptr;
+};
+
+void* PullerCreate(void* p_source)
+{
+	VideoSource* source = (VideoSource*)p_source;
+	return new Puller(source);
+}
+
+void PullerDestroy(void* ptr)
+{
+	Puller* puller = (Puller*)ptr;
+	delete puller;
+}
+
+void PullerPull(void* ptr)
+{
+	Puller* puller = (Puller*)ptr;
+	puller->pull();
+}
+
+unsigned long long PullerTimestamp(void* ptr)
+{
+	Puller* puller = (Puller*)ptr;
+	return puller->timestamp();
+}
+
+int PullerHasAlpha(void* ptr)
+{
+	Puller* puller = (Puller*)ptr;
+	return puller->has_alpha() ? 1 : 0;
+}
+
+int PullerWidth(void* ptr)
+{
+	Puller* puller = (Puller*)ptr;
+	return puller->width();
+}
+
+int PullerHeight(void* ptr)
+{
+	Puller* puller = (Puller*)ptr;
+	return puller->height();
+}
+
+int PullerIsFlipped(void* ptr)
+{
+	Puller* puller = (Puller*)ptr;
+	return puller->is_flipped() ? 1 : 0;
+}
+
+void PullerGetData(void* ptr, unsigned char* data)
+{
+	Puller* puller = (Puller*)ptr;
+	puller->get_data(data);
+}
+
+class Pusher
+{
+public:
+	Pusher(VideoTarget *target) : m_target(target)
+	{
+
+	}
+
+	~Pusher() {}
+
+	void set_size(int width, int height, bool has_alpha)
+	{
+		if (m_image == nullptr || m_image->width() != width || m_image->height() != height || m_image->has_alpha() != has_alpha)
+		{
+			m_image = (std::unique_ptr<Image>)(new Image(width, height, has_alpha));
+		}
+	}
+
+	void set_flipped(bool flipped)
+	{
+		m_image->set_flipped(flipped);
+	}
+
+	void set_data(const unsigned char* data)
+	{
+		int width = m_image->width();
+		int height = m_image->height();
+		int chn = m_image->has_alpha() ? 4 : 3;
+		memcpy(m_image->data(), data, (size_t)width*height*chn);
+	}
+
+	void push() const
+	{
+		m_target->write_image(m_image.get());
+	}
+
+private:
+	VideoTarget* m_target;
+	std::unique_ptr<Image> m_image;
+};
+
+void* PusherCreate(void* p_target)
+{
+	VideoTarget* target = (VideoTarget*)p_target;
+	return new Pusher(target);
+}
+
+void PusherDestroy(void* ptr)
+{
+	Pusher* pusher = (Pusher*)ptr;
+	delete pusher;
+}
+
+void PusherSetSize(void* ptr, int width, int height, int has_alpha)
+{
+	Pusher* pusher = (Pusher*)ptr;
+	pusher->set_size(width, height, has_alpha != 0);
+}
+
+void PusherSetFlipped(void* ptr, int flipped)
+{
+	Pusher* pusher = (Pusher*)ptr;
+	pusher->set_flipped(flipped != 0);
+}
+
+void PusherSetData(void* ptr, const unsigned char* data)
+{
+	Pusher* pusher = (Pusher*)ptr;
+	pusher->set_data(data);
+}
+
+void PusherPush(void* ptr)
+{
+	Pusher* pusher = (Pusher*)ptr;
+	pusher->push();
 }
 
 void* VideoPortCreate()

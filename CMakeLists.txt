@@ -1,15 +1,21 @@
 cmake_minimum_required (VERSION 3.0)
 project(LiveKit)
 
+add_subdirectory(thirdparty/glfw)
+add_subdirectory(thirdparty/glew-cmake)
+
+SET(FFMPEG_ROOT ${FFMPEG_ROOT} CACHE PATH "FFMpeg path" FORCE)
 
 set (INCLUDE_DIR
-thirdparty/include
+${FFMPEG_ROOT}/include
+thirdparty/glfw/include
+thirdparty/glew-cmake/include
 .
 ./internal
 )
 
 set (LIB_DIR
-thirdparty/lib
+${FFMPEG_ROOT}/lib
 )
 
 
@@ -64,7 +70,7 @@ internal/RenderingOGL.h
 add_definitions(${DEFINES})
 
 add_library(LiveKit ${LIB_SOURCES} ${LIB_HEADERS} ${INTERNAL_HEADERS})
-target_link_libraries(LiveKit avformat avdevice avcodec avfilter avutil postproc swscale swresample glew32 glfw3dll opengl32 strmiids winmm)
+target_link_libraries(LiveKit avformat avdevice avcodec avfilter avutil postproc swscale swresample libglew_static glfw opengl32 strmiids winmm)
 
 IF(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
   SET(CMAKE_INSTALL_PREFIX  ../install CACHE PATH "Install path" FORCE)

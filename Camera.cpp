@@ -113,8 +113,8 @@ namespace LiveKit
 		m_sws_ctx = sws_getContext(m_width, m_height, m_p_codec_ctx->pix_fmt, m_width, m_height, AV_PIX_FMT_BGR24, SWS_BICUBIC, nullptr, nullptr, nullptr);
 
 		m_p_packet = std::unique_ptr<AVPacket>(new AVPacket);
-		m_thread_read = (std::unique_ptr<std::thread>)(new std::thread(thread_read, this));
 		m_start_time = time_micro_sec();
+		m_thread_read = (std::unique_ptr<std::thread>)(new std::thread(thread_read, this));		
 	}
 
 

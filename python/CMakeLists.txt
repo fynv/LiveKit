@@ -53,18 +53,3 @@ sign_red.png
 
 install(FILES ${PYTHON} DESTINATION test_python)
 
-
-set(THIRD_PARTY_DLL 
-../thirdparty/bin/avcodec-58.dll
-../thirdparty/bin/avdevice-58.dll
-../thirdparty/bin/avfilter-7.dll
-../thirdparty/bin/avformat-58.dll
-../thirdparty/bin/avutil-56.dll
-../thirdparty/bin/postproc-55.dll
-../thirdparty/bin/swresample-3.dll
-../thirdparty/bin/swscale-5.dll
-../thirdparty/bin/glew32.dll
-../thirdparty/bin/glfw3.dll
-)
-
-install(FILES ${THIRD_PARTY_DLL} DESTINATION test_python)

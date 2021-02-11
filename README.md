@@ -2,9 +2,14 @@
 
 Trying to build an interface for Python doing similar things as [OBS Studio](https://github.com/obsproject/obs-studio)
 
-Still immature and under construction.
+## Installation
 
-## Building 
+LiveKit for Windows x64 (Python 3.7) is available as a conda package:
+```
+conda install -c fyplus livekit
+```
+
+## Building from Source-code
 
 LiveKit current can be built for Windows x64 platforms.
 

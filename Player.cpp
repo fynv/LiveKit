@@ -588,34 +588,37 @@ namespace LiveKit
 			if (m_v_idx >= 0)
 			{
 				avformat_seek_file(m_p_fmt_ctx, -1, INT64_MIN, pos, INT64_MAX, 0);
+
+				bool frame_read = false;
 				while (av_read_frame(m_p_fmt_ctx, m_p_packet.get()) == 0)
 				{
 					if (m_p_packet->stream_index == m_v_idx)
 					{
-						int time_base_num = m_video_time_base_num;
-						int time_base_den = m_video_time_base_den;
-						int64_t t_frame = m_p_packet->dts * time_base_num * AV_TIME_BASE / time_base_den;
-						if (t_frame <= pos)
+						int64_t t_frame = m_p_packet->dts * m_video_time_base_num * AV_TIME_BASE / m_video_time_base_den;
+						avcodec_send_packet(m_p_codec_ctx_video, m_p_packet.get());
+						avcodec_receive_frame(m_p_codec_ctx_video, m_p_frm_raw_video);
+						av_packet_unref(m_p_packet.get());
+						if (t_frame >= pos)
 						{
-							avcodec_send_packet(m_p_codec_ctx_video, m_p_packet.get());
-							avcodec_receive_frame(m_p_codec_ctx_video, m_p_frm_raw_video);
-							av_packet_unref(m_p_packet.get());
-						}
-						else
-						{
-							av_packet_unref(m_p_packet.get());
+							sws_scale(m_sws_ctx, (const uint8_t *const *)m_p_frm_raw_video->data, m_p_frm_raw_video->linesize,
+								0, m_p_codec_ctx_video->height, m_p_frm_bgr_video->data, m_p_frm_bgr_video->linesize);
+							frame_read = true;
 							break;
-						}
+						}						
 					}
-					av_packet_unref(m_p_packet.get());
+					else
+					{
+						av_packet_unref(m_p_packet.get());
+					}
 				}
-				sws_scale(m_sws_ctx, (const uint8_t *const *)m_p_frm_raw_video->data, m_p_frm_raw_video->linesize,
-					0, m_p_codec_ctx_video->height, m_p_frm_bgr_video->data, m_p_frm_bgr_video->linesize);
-
-				for (size_t i = 0; i < m_targets.size(); i++)
+				
+				if (frame_read)
 				{
-					m_targets[i]->write_image(m_video_buffer.get());
-				}				
+					for (size_t i = 0; i < m_targets.size(); i++)
+					{
+						m_targets[i]->write_image(m_video_buffer.get());
+					}
+				}
 			}
 			m_sync_progress = pos;
 		}

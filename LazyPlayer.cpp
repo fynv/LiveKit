@@ -199,6 +199,10 @@ namespace LiveKit
 		m_start_pos = pos;
 		m_start_time = time_micro_sec();
 		m_internal->set_position(pos);
+		if (m_internal->fetch())
+		{
+			m_timestamp = time_micro_sec();
+		}
 	}
 
 	const Image* LazyPlayer::read_image(uint64_t* timestamp) const

@@ -526,12 +526,14 @@ namespace LiveKit
 
 			while (m_a_idx >= 0 && m_queue_audio->Size() > 0)
 			{
-				m_queue_audio->Pop();
+				AVPacket packet = m_queue_audio->Pop();
+				av_packet_unref(&packet);
 			}
 
 			while (m_v_idx >= 0 && m_queue_video->Size() > 0)
 			{
-				m_queue_video->Pop();
+				AVPacket packet = m_queue_video->Pop();
+				av_packet_unref(&packet);
 			}
 
 			m_thread_demux->join();

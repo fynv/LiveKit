@@ -142,6 +142,13 @@ import LiveKit as lk
 target = lk.IPCTarget("LiveKitVCam", width, height, False)
 ```
 
+### Network streaming
+
+The "filename" parameter used when creating a Player object or a Recorder object can be a url of one of the protocols supported by ffmpeg. (See
+[https://www.ffmpeg.org/ffmpeg-protocols.html](https://www.ffmpeg.org/ffmpeg-protocols.html)). Now the Recorder becomes a Sender and the Player becomes a Reciever.
+The 'mp4' parameter of Recorder should be set to 'False', so that flv stream will be used.
+
+
 ## License
 
 This source code is provided to you by Vulcan Eon (北京鲜衣怒马文化传媒有限公司) 

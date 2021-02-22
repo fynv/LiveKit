@@ -207,21 +207,7 @@ public:
 		if (m_system_start_time <= 0)
 			m_system_start_time = get_current_time();
 
-		bool flipped;
-		unsigned char* img = FetchImage(flipped);
-		if (img != nullptr)
-		{
-			if (flipped)
-			{
-				memcpy(dst, img, DATA_SIZE);
-			}
-			else
-			{
-				for (int y = 0; y < VIDEO_HEIGHT; y++)
-					memcpy(dst + y * VIDEO_WIDTH * 3, img + (VIDEO_HEIGHT - 1 - y)*VIDEO_WIDTH * 3, VIDEO_WIDTH * 3);
-
-			}
-		}
+		FetchImage(dst);
 		
 		REFERENCE_TIME start_time = get_current_time(m_system_start_time);
 		REFERENCE_TIME end_time = start_time + ((VIDEOINFOHEADER*)m_mt.pbFormat)->AvgTimePerFrame;

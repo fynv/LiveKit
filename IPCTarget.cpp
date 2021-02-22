@@ -37,12 +37,12 @@ namespace LiveKit
 	void IPCTarget::write_image(const Image* image)
 	{
 		Header* header = (Header*)m_data;
-		int width = header->width;
-		int height = header->height;
-		int chn = header->chn;
+		int width_out = header->width;
+		int height_out = header->height;
+		int chn_out = header->chn;
 		int cur_frame = header->cur_frame;
 
-		size_t frame_size = sizeof(FrameHeader) + width * height*chn;
+		size_t frame_size = sizeof(FrameHeader) + width_out * height_out *chn_out;
 		unsigned char* p_frames = (unsigned char*)(header+1);
 		int write_frame = (cur_frame + 1) % 3;
 
@@ -50,8 +50,10 @@ namespace LiveKit
 		frame_header->is_flipped = image->is_flipped()?1:0;
 		frame_header->timestamp = time_micro_sec();
 
-		unsigned char* p_data = (unsigned char*)(frame_header + 1);
-		memcpy(p_data, image->data(), width * height*chn);
+		unsigned char* p_data_out = (unsigned char*)(frame_header + 1);
+		copy_centered(image->data(), image->width(), image->height(), image->has_alpha() ? 4 : 3,
+			p_data_out, width_out, height_out, chn_out, false);
+
 		header->cur_frame = write_frame;
 
 	}

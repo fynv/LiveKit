@@ -142,9 +142,6 @@ import LiveKit as lk
 target = lk.IPCTarget("LiveKitVCam", width, height, False)
 ```
 
-Here the mapping-name and resolution information of the IPCTarget object must match the virtual-camera settings.
-
-
 ## License
 
 This source code is provided to you by Vulcan Eon (北京鲜衣怒马文化传媒有限公司) 

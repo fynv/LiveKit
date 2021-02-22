@@ -411,61 +411,21 @@ namespace LiveKit
 		if (m_video_st->tmp_buffer == nullptr)
 			m_video_st->tmp_buffer = (uint8_t*)malloc((size_t)m_video_width* m_video_height * 3);
 
-		memset(m_video_st->tmp_buffer, 0, (size_t)m_video_width*m_video_height * 3);
-		bool flipped = false;
+		memset(m_video_st->tmp_buffer, 0, (size_t)m_video_width*m_video_height * 3);		
 		if (m_source != nullptr)
 		{
 			uint64_t timestamp;
 			const Image* img_in = m_source->read_image(&timestamp);
 			if (timestamp != (uint64_t)(-1))
 			{
-				int width_in = img_in->width();
-				int height_in = img_in->height();
-				int chn_in = img_in->has_alpha() ? 4 : 3;
-
-				int offset_in_x = 0;
-				int offset_in_y = 0;
-				int offset_out_x = 0;
-				int offset_out_y = 0;
-				int scan_w = min(m_video_width, width_in);
-				int scan_h = min(m_video_height, height_in);
-
-				if (width_in < m_video_width)
-					offset_out_x = (m_video_width - width_in) / 2;
-				else if (width_in > m_video_width)
-					offset_in_x = (width_in - m_video_width) / 2;
-
-				if (height_in < m_video_height)
-					offset_out_y = (m_video_height - height_in) / 2;
-				else if (height_in > m_video_height)
-					offset_in_y = (height_in - m_video_height) / 2;
-
-				for (int y = 0; y < scan_h; y++)
-				{
-					const uint8_t* p_in_line = img_in->data() + (y + offset_in_y)*width_in*chn_in;
-					uint8_t* p_out_line = m_video_st->tmp_buffer + (y + offset_out_y)*m_video_width * 3;
-					for (int x = 0; x < scan_w; x++)
-					{
-						const uint8_t* p_in = p_in_line + (x + offset_in_x)*chn_in;
-						uint8_t* p_out = p_out_line + (x + offset_out_x) * 3;
-						p_out[0] = p_in[0];
-						p_out[1] = p_in[1];
-						p_out[2] = p_in[2];
-					}
-				}
-
-				flipped = img_in->is_flipped();
+				copy_centered(img_in->data(), img_in->width(), img_in->height(), img_in->has_alpha() ? 4 : 3,
+					m_video_st->tmp_buffer, m_video_width, m_video_height, 3, img_in->is_flipped());
 			}
 		}
 
 		av_frame_make_writable(m_video_st->frame);
 		const unsigned char* p_data = m_video_st->tmp_buffer;
-		int stride = c->width * 3;		
-		if (flipped)
-		{
-			p_data += stride * (c->height - 1);
-			stride = -stride;
-		}
+		int stride = c->width * 3;	
 		sws_scale(m_video_st->sws_ctx, &p_data, &stride, 0, c->height, m_video_st->frame->data, m_video_st->frame->linesize);
 
 		m_video_st->frame->pts = m_video_st->next_pts++;

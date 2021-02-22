@@ -312,3 +312,23 @@ class Compositor:
         self.targets += [target]
         Native.CompositorAddTarget(self.cptr, target.target_ptr)
 
+class IPCTarget(VideoTarget):
+    def __init__(self, mapping_name, width, height, has_alpha):
+        self.cptr = Native.IPCTargetCreate(mapping_name.encode('mbcs'), width, height, has_alpha)
+        self.target_ptr = Native.IPCTargetGetTargetPtr(self.cptr)
+        VideoTarget.__init__(self)
+
+    def __del__(self):
+        VideoTarget.__del__(self)
+        Native.IPCTargetDestroy(self.cptr)
+
+class IPCSource(VideoSource):
+    def __init__(self, mapping_name):
+        self.cptr = Native.IPCSourceCreate(mapping_name.encode('mbcs'))
+        self.source_ptr = Native.IPCSourceGetSourcePtr(self.cptr)
+        VideoSource.__init__(self)
+
+    def __del__(self):
+        VideoSource.__del__(self)
+        Native.IPCSourceDestroy(self.cptr)
+

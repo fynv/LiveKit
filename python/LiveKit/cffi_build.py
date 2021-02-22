@@ -120,6 +120,13 @@ void CompositorRemoveSource(void* ptr, int i);
 void CompositorSetMargin(void* ptr, int margin);
 int CompositorDraw(void* ptr);
 void CompositorAddTarget(void* ptr, void* p_target);
+
+void *IPCTargetCreate(const char* mapping_name, int width, int height, int has_alpha);
+void IPCTargetDestroy(void* ptr);
+void* IPCTargetGetTargetPtr(void* ptr);
+void* IPCSourceCreate(const char* mapping_name);
+void IPCSourceDestroy(void* ptr);
+void* IPCSourceGetSourcePtr(void* ptr);
 """)
 
 ffibuilder.compile()

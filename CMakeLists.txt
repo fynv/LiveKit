@@ -49,6 +49,8 @@ WindowCapture.cpp
 Viewer.cpp
 Recorder.cpp
 Compositor.cpp
+IPCTarget.cpp
+IPCSource.cpp
 )
 
 set (LIB_HEADERS
@@ -61,6 +63,8 @@ WindowCapture.h
 Viewer.h
 Recorder.h
 Compositor.h
+IPCTarget.h
+IPCSource.h
 )
 
 set(INTERNAL_HEADERS

@@ -9,6 +9,9 @@ test_window_record.py
 test_compositor.py
 test_ocv_pull.py
 test_ocv_push.py
+
+test_ipc_server.py
+test_ipc_client.py
 )
 
 install(FILES ${PYTHON_TEST} DESTINATION test_python)

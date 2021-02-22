@@ -120,6 +120,13 @@ extern "C"
 	PY_LiveKit_API int CompositorDraw(void* ptr);
 	PY_LiveKit_API void CompositorAddTarget(void* ptr, void* p_target);
 
+	PY_LiveKit_API void *IPCTargetCreate(const char* mapping_name, int width, int height, int has_alpha);
+	PY_LiveKit_API void IPCTargetDestroy(void* ptr);
+	PY_LiveKit_API void* IPCTargetGetTargetPtr(void* ptr);
+	PY_LiveKit_API void* IPCSourceCreate(const char* mapping_name);
+	PY_LiveKit_API void IPCSourceDestroy(void* ptr);
+	PY_LiveKit_API void* IPCSourceGetSourcePtr(void* ptr);
+
 }
 
 #include <VideoPort.h>
@@ -132,6 +139,8 @@ extern "C"
 #include <WindowCapture.h>
 #include <Recorder.h>
 #include <Compositor.h>
+#include <IPCTarget.h>
+#include <IPCSource.h>
 using namespace LiveKit;
 
 #include <vector>
@@ -832,4 +841,38 @@ void CompositorAddTarget(void* ptr, void* p_target)
 	Compositor* comp = (Compositor*)ptr;
 	VideoTarget* target = (VideoTarget*)p_target;
 	comp->AddTarget(target);
+}
+
+void *IPCTargetCreate(const char* mapping_name, int width, int height, int has_alpha)
+{
+	return new IPCTarget(mapping_name, width, height, has_alpha);
+}
+
+void IPCTargetDestroy(void* ptr)
+{
+	IPCTarget* target = (IPCTarget*)ptr;
+	delete target;
+}
+
+void* IPCTargetGetTargetPtr(void* ptr)
+{
+	IPCTarget* target = (IPCTarget*)ptr;
+	return (VideoTarget*)target;
+}
+
+void* IPCSourceCreate(const char* mapping_name)
+{
+	return new IPCSource(mapping_name);
+}
+
+void IPCSourceDestroy(void* ptr)
+{
+	IPCSource* source = (IPCSource*)ptr;
+	delete source;
+}
+
+void* IPCSourceGetSourcePtr(void* ptr)
+{
+	IPCSource* source = (IPCSource*)ptr;
+	return (VideoSource*)source;
 }

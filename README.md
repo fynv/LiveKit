@@ -34,6 +34,8 @@ For Windows x64, a prebuilt package can be found at [https://www.gyan.dev/ffmpeg
 * Build with Visual Studio
 * Build the "INSTALL" project
 
+The 'VirtualCamera' sub-project can be built separately using the provided visual-studio project files. (Binaries are already provided under the VirtualCamera/bin folder)
+
 ## The Design
 
 The system works by compositing the following kinds of objects:
@@ -123,6 +125,25 @@ Unlike OBS Studio, LiveKit doesn't have a dedicated audio mixer. However, there 
 ### IPC Video Transmission
 
 Interprocess video transmission can be done by a pair of IPCTarget and IPCSource objects, which uses named file-mapping to efficiently share the frames.
+
+The 'VirtualCamera' sub-project provides a dshow virtual-camera which is compatible with IPCTarget. 
+
+Registering the virtual camera:
+```
+VirtualCamera\bin> register.cmd
+```
+
+Mapping-name and virtual resolution must be set before using the virtual camera from the host process, whcih can be done by setting a couple of registry values. See VirtualCamera/bin/reg_config.py for details.
+
+A IPCTarget object can be used to feed content into the virtual camera. 
+
+```python
+import LiveKit as lk
+target = lk.IPCTarget("LiveKitVCam", width, height, False)
+```
+
+Here the mapping-name and resolution information of the IPCTarget object must match the virtual-camera settings.
+
 
 ## License
 

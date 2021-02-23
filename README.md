@@ -120,8 +120,6 @@ Optionally, it writes to one or more VideoTargets. You can use it to record the 
 Compsitor => VideoPort => Recorder
 ```
 
-Unlike OBS Studio, LiveKit doesn't have a dedicated audio mixer. However, there are some components capables of audio capturing or playback. The tool [Virtual Audio Cable](https://vb-audio.com/Cable/) can be very helpful if you want to connect these components together.
-
 ### IPC Video Transmission
 
 Interprocess video transmission can be done by a pair of IPCTarget and IPCSource objects, which uses named file-mapping to efficiently share the frames.

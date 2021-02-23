@@ -127,6 +127,10 @@ extern "C"
 	PY_LiveKit_API void IPCSourceDestroy(void* ptr);
 	PY_LiveKit_API void* IPCSourceGetSourcePtr(void* ptr);
 
+	PY_LiveKit_API void* CopierCreate(const char* filename_in, const char* filename_out);
+	PY_LiveKit_API void CopierDestroy(void* ptr);
+	PY_LiveKit_API int CopierIsCopying(void* ptr);
+
 }
 
 #include <VideoPort.h>
@@ -141,6 +145,7 @@ extern "C"
 #include <Compositor.h>
 #include <IPCTarget.h>
 #include <IPCSource.h>
+#include <Copier.h>
 using namespace LiveKit;
 
 #include <vector>
@@ -875,4 +880,21 @@ void* IPCSourceGetSourcePtr(void* ptr)
 {
 	IPCSource* source = (IPCSource*)ptr;
 	return (VideoSource*)source;
+}
+
+void* CopierCreate(const char* filename_in, const char* filename_out)
+{
+	return new Copier(filename_in, filename_out);
+}
+
+void CopierDestroy(void* ptr)
+{
+	Copier* copier = (Copier*)ptr;
+	delete copier;
+}
+
+int CopierIsCopying(void* ptr)
+{
+	Copier* copier = (Copier*)ptr;
+	return copier->IsCopying() ? 1 : 0;
 }

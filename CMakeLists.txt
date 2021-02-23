@@ -51,6 +51,7 @@ Recorder.cpp
 Compositor.cpp
 IPCTarget.cpp
 IPCSource.cpp
+Copier.cpp
 )
 
 set (LIB_HEADERS
@@ -65,6 +66,7 @@ Recorder.h
 Compositor.h
 IPCTarget.h
 IPCSource.h
+Copier.h
 )
 
 set(INTERNAL_HEADERS

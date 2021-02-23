@@ -332,3 +332,12 @@ class IPCSource(VideoSource):
         VideoSource.__del__(self)
         Native.IPCSourceDestroy(self.cptr)
 
+class Copier:
+    def __init__(self, filename_in, filename_out):
+        self.cptr = Native.CopierCreate(filename_in.encode('mbcs'), filename_out.encode('mbcs'))
+
+    def __del__(self):
+        Native.CopierDestroy(self.cptr)
+
+    def is_copying(self):
+        return Native.CopierIsCopying(self.cptr)!=0

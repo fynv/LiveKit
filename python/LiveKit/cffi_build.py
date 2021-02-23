@@ -127,6 +127,10 @@ void* IPCTargetGetTargetPtr(void* ptr);
 void* IPCSourceCreate(const char* mapping_name);
 void IPCSourceDestroy(void* ptr);
 void* IPCSourceGetSourcePtr(void* ptr);
+
+void* CopierCreate(const char* filename_in, const char* filename_out);
+void CopierDestroy(void* ptr);
+int CopierIsCopying(void* ptr);
 """)
 
 ffibuilder.compile()

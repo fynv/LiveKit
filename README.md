@@ -4,7 +4,7 @@ Trying to build an interface for Python doing similar things as [OBS Studio](htt
 
 ## Installation
 
-LiveKit for Windows x64 (Python 3.7) is available as a conda package:
+LiveKit for Windows x64 is available as a conda package:
 ```
 conda install -c fyplus livekit
 ```

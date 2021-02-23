@@ -15,7 +15,6 @@ namespace LiveKit
 {
 	class Image;
 	class VideoSource;
-	class SoundRecorder;
 	struct OutputStream;
 
 	class Recorder
@@ -33,7 +32,9 @@ namespace LiveKit
 		void stop();
 
 
-	private:		
+	private:	
+		class AudioRecorder;		
+
 		int m_video_width, m_video_height;
 		int m_audio_device_id;
 
@@ -42,7 +43,7 @@ namespace LiveKit
 		std::unique_ptr<OutputStream> m_video_st;
 		std::unique_ptr<OutputStream> m_audio_st;
 
-		std::unique_ptr<SoundRecorder> m_sound_recorder;
+		std::unique_ptr<AudioRecorder> m_audio_recorder;
 		const VideoSource* m_source = nullptr;
 
 		bool m_recording = false;

@@ -341,3 +341,12 @@ class Copier:
 
     def is_copying(self):
         return Native.CopierIsCopying(self.cptr)!=0
+
+class AudioRepeater:
+    def __init__(self, audio_device_id_in,  audio_device_id_out):
+        self.cptr = Native.AudioRepeaterCreate(audio_device_id_in, audio_device_id_out)
+
+    def __del__(self):
+        Native.AudioRepeaterDestroy(self.cptr)
+
+

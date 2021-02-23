@@ -131,6 +131,9 @@ extern "C"
 	PY_LiveKit_API void CopierDestroy(void* ptr);
 	PY_LiveKit_API int CopierIsCopying(void* ptr);
 
+	PY_LiveKit_API void* AudioRepeaterCreate(int audio_device_id_in, int audio_device_id_out);
+	PY_LiveKit_API void AudioRepeaterDestroy(void* ptr);
+
 }
 
 #include <VideoPort.h>
@@ -146,6 +149,7 @@ extern "C"
 #include <IPCTarget.h>
 #include <IPCSource.h>
 #include <Copier.h>
+#include <AudioRepeater.h>
 using namespace LiveKit;
 
 #include <vector>
@@ -897,4 +901,15 @@ int CopierIsCopying(void* ptr)
 {
 	Copier* copier = (Copier*)ptr;
 	return copier->IsCopying() ? 1 : 0;
+}
+
+void* AudioRepeaterCreate(int audio_device_id_in, int audio_device_id_out)
+{
+	return new AudioRepeater(audio_device_id_in, audio_device_id_out);
+}
+
+void AudioRepeaterDestroy(void* ptr)
+{
+	AudioRepeater* repeater = (AudioRepeater*)ptr;
+	delete repeater;
 }

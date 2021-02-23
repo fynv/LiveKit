@@ -84,10 +84,10 @@ namespace LiveKit
 		HANDLE m_hSemaphore;
 	};
 
-	class SoundRecorder
+	class Recorder::AudioRecorder
 	{
 	public:
-		SoundRecorder(int devId, size_t samples_per_buffer) : m_samples_per_buffer(samples_per_buffer)
+		AudioRecorder(int devId, size_t samples_per_buffer) : m_samples_per_buffer(samples_per_buffer)
 		{
 			WAVEFORMATEX format = {};
 			format.wFormatTag = WAVE_FORMAT_PCM;
@@ -121,7 +121,7 @@ namespace LiveKit
 			waveInStart(m_WaveIn);
 		}
 
-		~SoundRecorder()
+		~AudioRecorder()
 		{
 			m_isReceiving = false;
 			waveInStop(m_WaveIn);
@@ -158,7 +158,7 @@ namespace LiveKit
 		{
 			if (uMsg == WIM_DATA)
 			{
-				SoundRecorder* self = (SoundRecorder*)dwInstance;
+				AudioRecorder* self = (AudioRecorder*)dwInstance;
 				WAVEHDR* pwhr = (WAVEHDR*)dwParam1;
 				if (!self->m_isReceiving) return;
 				self->recordBuf((short*)pwhr->lpData);
@@ -361,7 +361,7 @@ namespace LiveKit
 			if (m_audio_device_id >= 0)
 			{
 				int nb_samples = m_audio_st->enc->frame_size;
-				m_sound_recorder = (std::unique_ptr<SoundRecorder>)(new SoundRecorder(m_audio_device_id, nb_samples));
+				m_audio_recorder = (std::unique_ptr<AudioRecorder>)(new AudioRecorder(m_audio_device_id, nb_samples));
 			}
 			m_recording = true;
 			m_start_time = time_micro_sec();
@@ -377,7 +377,7 @@ namespace LiveKit
 			m_recording = false;
 			m_thread_write->join();
 			m_thread_write = nullptr;
-			m_sound_recorder = nullptr;
+			m_audio_recorder = nullptr;
 		}
 	}
 
@@ -434,12 +434,12 @@ namespace LiveKit
 
 	void Recorder::update_audio()
 	{
-		Buffer* buf = m_sound_recorder->get_buffer();
+		Buffer* buf = m_audio_recorder->get_buffer();
 
 		AVCodecContext *c = m_audio_st->enc;
 		int16_t *q = (int16_t*)m_audio_st->tmp_frame->data[0];
 		memcpy(q, buf->m_data, sizeof(short)*m_audio_st->tmp_frame->nb_samples*2);
-		m_sound_recorder->recycle_buffer(buf);
+		m_audio_recorder->recycle_buffer(buf);
 
 		m_audio_st->tmp_frame->pts = m_audio_st->next_pts;
 		m_audio_st->next_pts += m_audio_st->tmp_frame->nb_samples;

@@ -52,6 +52,7 @@ Compositor.cpp
 IPCTarget.cpp
 IPCSource.cpp
 Copier.cpp
+AudioRepeater.cpp
 )
 
 set (LIB_HEADERS
@@ -67,6 +68,7 @@ Compositor.h
 IPCTarget.h
 IPCSource.h
 Copier.h
+AudioRepeater.h
 )
 
 set(INTERNAL_HEADERS

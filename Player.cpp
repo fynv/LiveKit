@@ -18,6 +18,8 @@ extern "C" {
 #include <queue>
 #include <thread>
 
+#define DEV_SAMPLES_PER_BUFFER 4096
+
 namespace LiveKit
 {
 	void get_media_info(const char* fn, MediaInfo* info)
@@ -104,12 +106,10 @@ namespace LiveKit
 		HANDLE m_semaphore_out;
 	};
 
-#define DEV_SAMPLES_PER_BUFFER 4096
-
 	class Player::AudioPlayback
 	{
 	public:
-		AudioPlayback(int audioDevId, Player* player) : m_player(player)
+		AudioPlayback(int audioDevId, size_t samples_per_buffer, Player* player) : m_samples_per_buffer(samples_per_buffer), m_player(player)
 		{
 			WAVEFORMATEX format = {};
 			format.wFormatTag = WAVE_FORMAT_PCM;
@@ -122,20 +122,20 @@ namespace LiveKit
 
 			waveOutOpen(&m_WaveOut, audioDevId, &format, (DWORD_PTR)(SoundOutCallBack), (DWORD_PTR)this, CALLBACK_FUNCTION);
 
-			m_Buffer = new short[DEV_SAMPLES_PER_BUFFER * format.nChannels * 2];
+			m_Buffer = new short[m_samples_per_buffer * format.nChannels * 2];
 			m_Buffer1 = m_Buffer;
-			m_Buffer2 = m_Buffer + DEV_SAMPLES_PER_BUFFER * format.nChannels;
-			memset(m_Buffer, 0, sizeof(short)*DEV_SAMPLES_PER_BUFFER * format.nChannels * 2);
+			m_Buffer2 = m_Buffer + m_samples_per_buffer * format.nChannels;
+			memset(m_Buffer, 0, sizeof(short)*m_samples_per_buffer * format.nChannels * 2);
 
 			m_WaveHeader1.lpData = (char *)m_Buffer1;
-			m_WaveHeader1.dwBufferLength = DEV_SAMPLES_PER_BUFFER * format.nChannels * sizeof(short);
+			m_WaveHeader1.dwBufferLength = m_samples_per_buffer * format.nChannels * sizeof(short);
 			m_WaveHeader1.dwFlags = 0;
 			m_WaveHeader1.dwUser = 0;
 			waveOutPrepareHeader(m_WaveOut, &m_WaveHeader1, sizeof(WAVEHDR));
 			waveOutWrite(m_WaveOut, &m_WaveHeader1, sizeof(WAVEHDR));
 
 			m_WaveHeader2.lpData = (char *)m_Buffer2;
-			m_WaveHeader2.dwBufferLength = DEV_SAMPLES_PER_BUFFER * format.nChannels * sizeof(short);
+			m_WaveHeader2.dwBufferLength = m_samples_per_buffer * format.nChannels * sizeof(short);
 			m_WaveHeader2.dwFlags = 0;
 			m_WaveHeader2.dwUser = 0;
 			waveOutPrepareHeader(m_WaveOut, &m_WaveHeader2, sizeof(WAVEHDR));
@@ -163,6 +163,9 @@ namespace LiveKit
 
 	private:
 		Player* m_player;
+
+		size_t m_samples_per_buffer;
+
 		HWAVEOUT m_WaveOut;
 		short  *m_Buffer;
 		short  *m_Buffer1, *m_Buffer2;
@@ -196,12 +199,12 @@ namespace LiveKit
 				int out_pos = 0;
 				int count_packet = 0;
 				int64_t progress = -1;
-				while (player->m_audio_playing && !eof && out_pos < DEV_SAMPLES_PER_BUFFER)
+				while (player->m_audio_playing && !eof && out_pos < self->m_samples_per_buffer)
 				{
 					if (player->m_audio_buffer != nullptr && self->m_in_pos < self->m_in_length)
 					{
 						int copy_size = self->m_in_length - self->m_in_pos;
-						int copy_size_out = DEV_SAMPLES_PER_BUFFER - out_pos;
+						int copy_size_out = self->m_samples_per_buffer - out_pos;
 						if (copy_size > copy_size_out) copy_size = copy_size_out;
 						short* p_out = (short*)pwhr->lpData + out_pos * 2;
 						const short* p_in = (const short*)player->m_audio_buffer->data() + self->m_in_pos * 2;
@@ -277,10 +280,10 @@ namespace LiveKit
 					}
 				}
 
-				if (out_pos < DEV_SAMPLES_PER_BUFFER)
+				if (out_pos < self->m_samples_per_buffer)
 				{
 					short* p_out = (short*)pwhr->lpData + out_pos * 2;
-					size_t bytes = sizeof(short) * (DEV_SAMPLES_PER_BUFFER - out_pos) * 2;
+					size_t bytes = sizeof(short) * (self->m_samples_per_buffer - out_pos) * 2;
 					memset(p_out, 0, bytes);
 				}
 
@@ -558,7 +561,7 @@ namespace LiveKit
 		{
 			m_audio_playing = true;
 			m_audio_eof = false;
-			m_audio_playback = (std::unique_ptr<AudioPlayback>)(new AudioPlayback(m_audio_device_id, this));
+			m_audio_playback = (std::unique_ptr<AudioPlayback>)(new AudioPlayback(m_audio_device_id, DEV_SAMPLES_PER_BUFFER, this));
 		}
 
 		if (m_v_idx >= 0)
@@ -638,7 +641,7 @@ namespace LiveKit
 				m_audio_playback = nullptr;
 				m_audio_playing = true;
 				m_audio_eof = false;
-				m_audio_playback = (std::unique_ptr<AudioPlayback>)(new AudioPlayback(m_audio_device_id, this));
+				m_audio_playback = (std::unique_ptr<AudioPlayback>)(new AudioPlayback(m_audio_device_id, DEV_SAMPLES_PER_BUFFER, this));
 			}
 		}
 	}

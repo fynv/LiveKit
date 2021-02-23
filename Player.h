@@ -41,10 +41,6 @@ namespace LiveKit
 	class Player
 	{
 	public:
-		class PacketQueue;
-		class AudioPlayback;
-		class VideoPlayback;
-
 		Player(const char* fn, bool play_audio = true, bool play_video = true, int audio_device_id = 0);
 		~Player();
 
@@ -68,6 +64,10 @@ namespace LiveKit
 
 
 	private:
+		class PacketQueue;
+		class AudioPlayback;
+		class VideoPlayback;
+
 		void _start(uint64_t pos);
 
 		std::unique_ptr<PacketQueue> m_queue_audio;

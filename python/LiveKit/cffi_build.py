@@ -131,6 +131,9 @@ void* IPCSourceGetSourcePtr(void* ptr);
 void* CopierCreate(const char* filename_in, const char* filename_out);
 void CopierDestroy(void* ptr);
 int CopierIsCopying(void* ptr);
+
+void* AudioRepeaterCreate(int audio_device_id_in, int audio_device_id_out);
+void AudioRepeaterDestroy(void* ptr);
 """)
 
 ffibuilder.compile()

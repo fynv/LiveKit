@@ -335,7 +335,6 @@ namespace LiveKit
 			open_audio(m_oc, audio_codec, m_audio_st.get());
 		}
 
-		av_dump_format(m_oc, 0, filename, 1);
 		if (!(m_fmt->flags & AVFMT_NOFILE))
 		{
 			avio_open(&m_oc->pb, filename, AVIO_FLAG_WRITE);

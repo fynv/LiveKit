@@ -428,7 +428,7 @@ namespace LiveKit
 	{
 		while (self->m_recording)
 		{
-			if (self->m_audio_device_id >= 0)
+			if (self->m_record_audio)
 			{
 				self->update_av();
 			}

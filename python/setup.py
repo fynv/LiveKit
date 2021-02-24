@@ -3,7 +3,7 @@ from codecs import open
 
 setup(
 	name = 'LiveKit',
-	version = '0.0.2',
+	version = '0.0.3',
 	description = 'A scripting interface resembling OBS Studio.',
 	url='https://github.com/fynv/LiveKit',
 	license='GPL v2',

@@ -146,11 +146,14 @@ The "filename" parameter used when creating a Player object or a Recorder object
 [https://www.ffmpeg.org/ffmpeg-protocols.html](https://www.ffmpeg.org/ffmpeg-protocols.html)). Now the Recorder becomes a Sender and the Player becomes a Reciever.
 The 'mp4' parameter of Recorder should be set to 'False', so that flv stream will be used.
 
-
 ### Stream Copying
 
 A Copier object simply copies one file to another (in its own process). The filenames used here can also be network urls. 
 This can be useful, for example, if you want to build a conference server.
+
+### Audio Devices
+Audio Device IDs are used in Player, Recorder and AudioRepeater objects. When an Audio Device ID >=0, it is corresponding to a MME system audio device.
+When it is negative, the audio stream will be wired to an (in-proess) virtual audio channel. For interprocess virtual-wiring, [VB-CABLE](https://vb-audio.com/Cable/) would be very helpful.
 
 ## License
 

@@ -101,7 +101,7 @@ extern "C"
 	PY_LiveKit_API void WindowCaptureDestroy(void* ptr);
 	PY_LiveKit_API void* WindowCaptureGetSourcePtr(void* ptr);
 
-	PY_LiveKit_API void* RecorderCreate(const char* filename, int mp4, int video_width, int video_height, int audio_device_id);
+	PY_LiveKit_API void* RecorderCreate(const char* filename, int mp4, int video_width, int video_height, int record_audio, int audio_device_id);
 	PY_LiveKit_API void RecorderDestroy(void* ptr);
 	PY_LiveKit_API void RecorderSetSource(void* ptr, void* p_source);
 	PY_LiveKit_API void RecorderStart(void* ptr);
@@ -747,9 +747,9 @@ void* WindowCaptureGetSourcePtr(void* ptr)
 	return (VideoSource*)wc;
 }
 
-void* RecorderCreate(const char* filename, int mp4, int video_width, int video_height, int audio_device_id)
+void* RecorderCreate(const char* filename, int mp4, int video_width, int video_height, int record_audio, int audio_device_id)
 {
-	return new Recorder(filename, mp4!=0, video_width, video_height, audio_device_id);
+	return new Recorder(filename, mp4!=0, video_width, video_height, record_audio!=0, audio_device_id);
 }
 
 void RecorderDestroy(void* ptr)

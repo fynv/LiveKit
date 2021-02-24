@@ -36,7 +36,7 @@ class Recording:
             self.btn.configure(text = "Stop")
             self.lbl.configure(image=self.logo_recording)
             wc = lk.WindowCapture(self.window_selector.current())
-            self.recorder = lk.Recorder("test.mp4", True, 576, 1024, self.idx_audio)
+            self.recorder = lk.Recorder("test.mp4", True, 576, 1024, True, self.idx_audio)
             self.recorder.set_source(wc)
             self.recorder.start()
         else:

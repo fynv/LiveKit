@@ -1,6 +1,7 @@
 #include "Recorder.h"
 #include "Image.h"
 #include "VideoPort.h"
+#include "AudioIO.h"
 #include "Utils.h"
 
 extern "C"
@@ -15,9 +16,6 @@ extern "C"
 #include <thread>
 #include <cmath>
 #include <queue>
-#include <Windows.h>
-#include <mmsystem.h>
-#include <mmreg.h>
 
 namespace LiveKit
 {
@@ -89,48 +87,12 @@ namespace LiveKit
 	public:
 		AudioRecorder(int devId, size_t samples_per_buffer) : m_samples_per_buffer(samples_per_buffer)
 		{
-			WAVEFORMATEX format = {};
-			format.wFormatTag = WAVE_FORMAT_PCM;
-			format.nChannels = 2;
-			format.nSamplesPerSec = 44100;
-			format.nAvgBytesPerSec = format.nSamplesPerSec * format.nChannels * sizeof(short);
-			format.nBlockAlign = sizeof(short) * format.nChannels;
-			format.wBitsPerSample = 16;
-			format.cbSize = 0;
-
-			waveInOpen(&m_WaveIn, devId, &format, (DWORD_PTR)(s_SoundInCallback), (DWORD_PTR)this, CALLBACK_FUNCTION);
-
-			m_Buffer = new short[samples_per_buffer * format.nChannels * 2];
-			m_Buffer1 = m_Buffer;
-			m_Buffer2 = m_Buffer + samples_per_buffer * format.nChannels;
-			memset(m_Buffer, 0, sizeof(short)*samples_per_buffer * format.nChannels * 2);
-
-			m_WaveHeader1.lpData = (char *)m_Buffer1;
-			m_WaveHeader1.dwBufferLength = (DWORD)(samples_per_buffer * format.nChannels * sizeof(short));
-			m_WaveHeader1.dwFlags = 0;
-			waveInPrepareHeader(m_WaveIn, &m_WaveHeader1, sizeof(WAVEHDR));
-			waveInAddBuffer(m_WaveIn, &m_WaveHeader1, sizeof(WAVEHDR));
-
-			m_WaveHeader2.lpData = (char *)m_Buffer2;
-			m_WaveHeader2.dwBufferLength = (DWORD)(samples_per_buffer* format.nChannels * sizeof(short));
-			m_WaveHeader2.dwFlags = 0;
-			waveInPrepareHeader(m_WaveIn, &m_WaveHeader2, sizeof(WAVEHDR));
-			waveInAddBuffer(m_WaveIn, &m_WaveHeader2, sizeof(WAVEHDR));		
-
-			m_isReceiving = true;
-			waveInStart(m_WaveIn);
+			m_audio_in = (std::unique_ptr<AudioIn>)(new AudioIn(devId, 44100, samples_per_buffer, callback, eof_callback, this));
 		}
 
 		~AudioRecorder()
 		{
-			m_isReceiving = false;
-			waveInStop(m_WaveIn);
-			waveInReset(m_WaveIn);
-			waveInUnprepareHeader(m_WaveIn, &m_WaveHeader1, sizeof(WAVEHDR));
-			waveInUnprepareHeader(m_WaveIn, &m_WaveHeader2, sizeof(WAVEHDR));
-			waveInClose(m_WaveIn);
-			
-			delete[] m_Buffer;
+			m_audio_in = nullptr;
 		}
 
 		Buffer* get_buffer()
@@ -148,23 +110,16 @@ namespace LiveKit
 		BufferQueue m_buffer_queue;
 		BufferQueue m_recycler;
 
-		bool m_isReceiving = false;
-		HWAVEIN m_WaveIn;
-		short  *m_Buffer;
-		short  *m_Buffer1, *m_Buffer2;
-		WAVEHDR m_WaveHeader1, m_WaveHeader2;
+		std::unique_ptr<AudioIn> m_audio_in;
 
-		static void __stdcall s_SoundInCallback(HWAVEIN hwi, UINT uMsg, DWORD_PTR dwInstance, DWORD_PTR dwParam1, DWORD_PTR dwParam2)
+		static void eof_callback(void* usr_ptr)	{}
+
+		static bool callback(const short* buf, void* usr_ptr)
 		{
-			if (uMsg == WIM_DATA)
-			{
-				AudioRecorder* self = (AudioRecorder*)dwInstance;
-				WAVEHDR* pwhr = (WAVEHDR*)dwParam1;
-				if (!self->m_isReceiving) return;
-				self->recordBuf((short*)pwhr->lpData);
-				waveInAddBuffer(hwi, pwhr, sizeof(WAVEHDR));
-			}
-		}
+			AudioRecorder* self = (AudioRecorder*)usr_ptr;
+			self->recordBuf(buf);
+			return true;
+		}	
 
 		void recordBuf(const short* data)
 		{
@@ -315,8 +270,8 @@ namespace LiveKit
 		swr_free(&ost->swr_ctx);
 	}
 
-	Recorder::Recorder(const char* filename, bool mp4, int video_width, int video_height, int audio_device_id)
-		: m_video_width(video_width), m_video_height(video_height), m_audio_device_id(audio_device_id)
+	Recorder::Recorder(const char* filename, bool mp4, int video_width, int video_height, bool record_audio, int audio_device_id)
+		: m_video_width(video_width), m_video_height(video_height), m_record_audio(record_audio), m_audio_device_id(audio_device_id)
 	{
 		AVOutputFormat *output_format = av_guess_format(mp4?"mp4":"flv", nullptr, filename);
 		avformat_alloc_output_context2(&m_oc, output_format, nullptr, filename);		
@@ -327,7 +282,7 @@ namespace LiveKit
 		add_video_stream(m_video_st.get(), m_oc, video_codec, m_video_width, m_video_height);
 		open_video(m_oc, video_codec, m_video_st.get());
 
-		if (m_audio_device_id >= 0)
+		if (record_audio)
 		{
 			AVCodec *audio_codec = avcodec_find_encoder(audio_codec_id);
 			m_audio_st = (std::unique_ptr<OutputStream>)(new OutputStream);
@@ -358,7 +313,7 @@ namespace LiveKit
 	{
 		if (!m_recording)
 		{
-			if (m_audio_device_id >= 0)
+			if (m_record_audio)
 			{
 				int nb_samples = m_audio_st->enc->frame_size;
 				m_audio_recorder = (std::unique_ptr<AudioRecorder>)(new AudioRecorder(m_audio_device_id, nb_samples));

@@ -20,7 +20,7 @@ namespace LiveKit
 	class Recorder
 	{
 	public:
-		Recorder(const char* filename, bool mp4, int video_width, int video_height, int audio_device_id = -1);
+		Recorder(const char* filename, bool mp4, int video_width, int video_height, bool record_audio = false, int audio_device_id = 0);
 		~Recorder();
 
 		void SetSource(const VideoSource* source)
@@ -36,6 +36,7 @@ namespace LiveKit
 		class AudioRecorder;		
 
 		int m_video_width, m_video_height;
+		bool m_record_audio;
 		int m_audio_device_id;
 
 		AVFormatContext *m_oc;

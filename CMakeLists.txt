@@ -40,6 +40,8 @@ set (LIB_SOURCES
 internal/Image.cpp
 internal/AudioBuffer.cpp
 internal/RenderingOGL.cpp
+internal/AudioPort.cpp
+internal/AudioIO.cpp
 VideoPort.cpp
 ImageFile.cpp
 Player.cpp
@@ -76,6 +78,8 @@ internal/Utils.h
 internal/Image.h
 internal/AudioBuffer.h
 internal/RenderingOGL.h
+internal/AudioPort.h
+internal/AudioIO.h
 )
 
 add_definitions(${DEFINES})

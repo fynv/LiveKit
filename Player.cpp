@@ -2,6 +2,7 @@
 #include "AudioBuffer.h"
 #include "Image.h"
 #include "VideoPort.h"
+#include "AudioIO.h"
 #include "Utils.h"
 
 extern "C" {
@@ -13,8 +14,6 @@ extern "C" {
 #include <libswresample/swresample.h>
 }
 
-#include <mmsystem.h>
-#include <mmreg.h>
 #include <queue>
 #include <thread>
 
@@ -109,50 +108,19 @@ namespace LiveKit
 	class Player::AudioPlayback
 	{
 	public:
-		AudioPlayback(int audioDevId, size_t samples_per_buffer, Player* player) : m_samples_per_buffer(samples_per_buffer), m_player(player)
+		AudioPlayback(int audioDevId, size_t samples_per_buffer, Player* player) 
+			: m_player(player)
+			, m_samples_per_buffer(samples_per_buffer)
 		{
-			WAVEFORMATEX format = {};
-			format.wFormatTag = WAVE_FORMAT_PCM;
-			format.nChannels = 2;
-			format.nSamplesPerSec = player->m_p_codec_ctx_audio->sample_rate;
-			format.nAvgBytesPerSec = format.nSamplesPerSec * format.nChannels * sizeof(short);
-			format.nBlockAlign = sizeof(short)*format.nChannels;
-			format.wBitsPerSample = 16;
-			format.cbSize = 0;
-
-			waveOutOpen(&m_WaveOut, audioDevId, &format, (DWORD_PTR)(SoundOutCallBack), (DWORD_PTR)this, CALLBACK_FUNCTION);
-
-			m_Buffer = new short[m_samples_per_buffer * format.nChannels * 2];
-			m_Buffer1 = m_Buffer;
-			m_Buffer2 = m_Buffer + m_samples_per_buffer * format.nChannels;
-			memset(m_Buffer, 0, sizeof(short)*m_samples_per_buffer * format.nChannels * 2);
-
-			m_WaveHeader1.lpData = (char *)m_Buffer1;
-			m_WaveHeader1.dwBufferLength = m_samples_per_buffer * format.nChannels * sizeof(short);
-			m_WaveHeader1.dwFlags = 0;
-			m_WaveHeader1.dwUser = 0;
-			waveOutPrepareHeader(m_WaveOut, &m_WaveHeader1, sizeof(WAVEHDR));
-			waveOutWrite(m_WaveOut, &m_WaveHeader1, sizeof(WAVEHDR));
-
-			m_WaveHeader2.lpData = (char *)m_Buffer2;
-			m_WaveHeader2.dwBufferLength = m_samples_per_buffer * format.nChannels * sizeof(short);
-			m_WaveHeader2.dwFlags = 0;
-			m_WaveHeader2.dwUser = 0;
-			waveOutPrepareHeader(m_WaveOut, &m_WaveHeader2, sizeof(WAVEHDR));
-			waveOutWrite(m_WaveOut, &m_WaveHeader2, sizeof(WAVEHDR));
-
 			m_p_packet = std::unique_ptr<AVPacket>(new AVPacket);
 			m_packet_ref = false;
+			m_audio_out = (std::unique_ptr<AudioOut>)(new AudioOut(audioDevId, player->m_p_codec_ctx_audio->sample_rate, samples_per_buffer, callback, eof_callback, this));
 		}
 
 
 		~AudioPlayback()
 		{
-			waveOutReset(m_WaveOut);
-			waveOutUnprepareHeader(m_WaveOut, &m_WaveHeader1, sizeof(WAVEHDR));
-			waveOutUnprepareHeader(m_WaveOut, &m_WaveHeader2, sizeof(WAVEHDR));
-			waveOutClose(m_WaveOut);
-			delete[] m_Buffer;
+			m_audio_out = nullptr;
 
 			if (m_packet_ref)
 			{
@@ -163,14 +131,10 @@ namespace LiveKit
 
 	private:
 		Player* m_player;
-
 		size_t m_samples_per_buffer;
+		std::unique_ptr<AudioOut> m_audio_out;		
 
-		HWAVEOUT m_WaveOut;
-		short  *m_Buffer;
-		short  *m_Buffer1, *m_Buffer2;
-		WAVEHDR	m_WaveHeader1, m_WaveHeader2;
-
+		bool m_eof = false;
 		bool m_packet_ref = false;
 		std::unique_ptr<AVPacket> m_p_packet;
 		int m_in_pos = 0;
@@ -179,129 +143,131 @@ namespace LiveKit
 
 		int m_sync_count = 0;
 
-		static void SoundOutCallBack(HWAVEOUT hwo, UINT uMsg, DWORD_PTR dwInstance, DWORD_PTR dwParam1, DWORD_PTR dwParam2)
+		static void eof_callback(void* usr_ptr)
 		{
-			if (uMsg == WOM_DONE)
+			AudioPlayback* self = (AudioPlayback*)usr_ptr;
+			Player* player = (Player*)self->m_player;
+			player->m_audio_eof = true;
+		}
+
+		static bool callback(short* buf, void* usr_ptr)
+		{
+			AudioPlayback* self = (AudioPlayback*)usr_ptr;
+			Player* player = (Player*)self->m_player;
+			PacketQueue& queue = *player->m_queue_audio;
+			int time_base_num = player->m_audio_time_base_num;
+			int time_base_den = player->m_audio_time_base_den;
+
+			bool eof = self->m_eof;
+			if (!player->m_audio_playing || eof) return false;
+
+			int out_pos = 0;
+			int count_packet = 0;
+			int64_t progress = -1;
+			while (player->m_audio_playing && !eof && out_pos < self->m_samples_per_buffer)
 			{
-				AudioPlayback* self = (AudioPlayback*)dwInstance;
-				Player* player = (Player*)self->m_player;
-				PacketQueue& queue = *player->m_queue_audio;
-				int time_base_num = player->m_audio_time_base_num;
-				int time_base_den = player->m_audio_time_base_den;
-
-				WAVEHDR* pwhr = (WAVEHDR*)dwParam1;
-				bool eof = pwhr->dwUser != 0;
-				if (!player->m_audio_playing || eof)
+				if (player->m_audio_buffer != nullptr && self->m_in_pos < self->m_in_length)
 				{
-					player->m_audio_eof = true;
-					return;
+					int copy_size = self->m_in_length - self->m_in_pos;
+					int copy_size_out = self->m_samples_per_buffer - out_pos;
+					if (copy_size > copy_size_out) copy_size = copy_size_out;
+					short* p_out = buf + out_pos * 2;
+					const short* p_in = (const short*)player->m_audio_buffer->data() + self->m_in_pos * 2;
+					memcpy(p_out, p_in, sizeof(short)*copy_size * 2);
+					out_pos += copy_size;
+					self->m_in_pos += copy_size;
 				}
-				int out_pos = 0;
-				int count_packet = 0;
-				int64_t progress = -1;
-				while (player->m_audio_playing && !eof && out_pos < self->m_samples_per_buffer)
+				else
 				{
-					if (player->m_audio_buffer != nullptr && self->m_in_pos < self->m_in_length)
+					while (true)
 					{
-						int copy_size = self->m_in_length - self->m_in_pos;
-						int copy_size_out = self->m_samples_per_buffer - out_pos;
-						if (copy_size > copy_size_out) copy_size = copy_size_out;
-						short* p_out = (short*)pwhr->lpData + out_pos * 2;
-						const short* p_in = (const short*)player->m_audio_buffer->data() + self->m_in_pos * 2;
-						memcpy(p_out, p_in, sizeof(short)*copy_size * 2);
-						out_pos += copy_size;
-						self->m_in_pos += copy_size;
-					}
-					else
-					{
-						while (true)
+						int ret = avcodec_receive_frame(player->m_p_codec_ctx_audio, player->m_p_frm_raw_audio);
+						if (ret == 0)
 						{
-							int ret = avcodec_receive_frame(player->m_p_codec_ctx_audio, player->m_p_frm_raw_audio);
-							if (ret == 0)
+							self->m_in_length = player->m_p_frm_raw_audio->nb_samples;
+							if (player->m_audio_buffer == nullptr || self->m_in_length > self->m_in_buf_size)
 							{
-								self->m_in_length = player->m_p_frm_raw_audio->nb_samples;
-								if (player->m_audio_buffer == nullptr || self->m_in_length > self->m_in_buf_size)
-								{
-									self->m_in_buf_size = self->m_in_length;
-									player->m_audio_buffer = (std::unique_ptr<AudioBuffer>)(new AudioBuffer(2, self->m_in_buf_size));
-									av_samples_fill_arrays(player->m_p_frm_s16_audio->data, player->m_p_frm_s16_audio->linesize,
-										player->m_audio_buffer->data(), 2, self->m_in_buf_size, AV_SAMPLE_FMT_S16, 0);
-								}
-								swr_convert(player->m_swr_ctx, player->m_p_frm_s16_audio->data, self->m_in_length,
-									(const uint8_t **)player->m_p_frm_raw_audio->data, self->m_in_length);
-
-								self->m_in_pos = 0;
-								break;
+								self->m_in_buf_size = self->m_in_length;
+								player->m_audio_buffer = (std::unique_ptr<AudioBuffer>)(new AudioBuffer(2, self->m_in_buf_size));
+								av_samples_fill_arrays(player->m_p_frm_s16_audio->data, player->m_p_frm_s16_audio->linesize,
+									player->m_audio_buffer->data(), 2, self->m_in_buf_size, AV_SAMPLE_FMT_S16, 0);
 							}
+							swr_convert(player->m_swr_ctx, player->m_p_frm_s16_audio->data, self->m_in_length,
+								(const uint8_t **)player->m_p_frm_raw_audio->data, self->m_in_length);
 
-							if (self->m_packet_ref)
-							{
-								av_packet_unref(self->m_p_packet.get());
-								self->m_packet_ref = false;
-							}
-
-							while (player->m_audio_playing && !eof && queue.Size() == 0)
-							{
-								if (!player->m_demuxing) eof = true;
-							}
-							if (!player->m_audio_playing || eof) break;
-
-							*self->m_p_packet = queue.Pop();
-							self->m_packet_ref = true;
-
-							if (count_packet == 0)
-							{
-								while (true)
-								{
-									progress = self->m_p_packet->dts * time_base_num * AV_TIME_BASE / time_base_den;
-									if (progress >= player->m_sync_progress) break;
-
-									avcodec_send_packet(player->m_p_codec_ctx_audio, self->m_p_packet.get());
-									while (avcodec_receive_frame(player->m_p_codec_ctx_audio, player->m_p_frm_raw_audio) == 0);
-									av_packet_unref(self->m_p_packet.get());
-									self->m_packet_ref = false;
-
-									while (player->m_audio_playing && !eof && queue.Size() == 0)
-									{
-										if (!player->m_demuxing) eof = true;
-									}
-									if (!player->m_audio_playing || eof) break;
-									*self->m_p_packet = queue.Pop();
-									self->m_packet_ref = true;
-								}
-								if (!player->m_audio_playing || eof) break;
-							}
-
-							avcodec_send_packet(player->m_p_codec_ctx_audio, self->m_p_packet.get());
-							count_packet++;
+							self->m_in_pos = 0;
+							break;
 						}
 
+						if (self->m_packet_ref)
+						{
+							av_packet_unref(self->m_p_packet.get());
+							self->m_packet_ref = false;
+						}
+
+						while (player->m_audio_playing && !eof && queue.Size() == 0)
+						{
+							if (!player->m_demuxing) eof = true;
+						}
 						if (!player->m_audio_playing || eof) break;
+
+						*self->m_p_packet = queue.Pop();
+						self->m_packet_ref = true;
+
+						if (count_packet == 0)
+						{
+							while (true)
+							{
+								progress = self->m_p_packet->dts * time_base_num * AV_TIME_BASE / time_base_den;
+								if (progress >= player->m_sync_progress) break;
+
+								avcodec_send_packet(player->m_p_codec_ctx_audio, self->m_p_packet.get());
+								while (avcodec_receive_frame(player->m_p_codec_ctx_audio, player->m_p_frm_raw_audio) == 0);
+								av_packet_unref(self->m_p_packet.get());
+								self->m_packet_ref = false;
+
+								while (player->m_audio_playing && !eof && queue.Size() == 0)
+								{
+									if (!player->m_demuxing) eof = true;
+								}
+								if (!player->m_audio_playing || eof) break;
+								*self->m_p_packet = queue.Pop();
+								self->m_packet_ref = true;
+							}
+							if (!player->m_audio_playing || eof) break;
+						}
+
+						avcodec_send_packet(player->m_p_codec_ctx_audio, self->m_p_packet.get());
+						count_packet++;
 					}
-				}
 
-				if (out_pos < self->m_samples_per_buffer)
-				{
-					short* p_out = (short*)pwhr->lpData + out_pos * 2;
-					size_t bytes = sizeof(short) * (self->m_samples_per_buffer - out_pos) * 2;
-					memset(p_out, 0, bytes);
+					if (!player->m_audio_playing || eof) break;
 				}
-
-				static int s_sync_interval = 10;
-				if (progress > 0)
-				{
-					self->m_sync_count = (self->m_sync_count + 1) % s_sync_interval;
-					if (self->m_sync_count == 0)
-					{
-						uint64_t localtime = time_micro_sec();
-						player->_set_sync_point(localtime, progress);
-					}
-				}
-
-				pwhr->dwUser = eof ? 1 : 0;
-				waveOutWrite(hwo, pwhr, sizeof(WAVEHDR));
 			}
+
+			if (out_pos < self->m_samples_per_buffer)
+			{
+				short* p_out = buf + out_pos * 2;
+				size_t bytes = sizeof(short) * (self->m_samples_per_buffer - out_pos) * 2;
+				memset(p_out, 0, bytes);
+			}
+
+			static int s_sync_interval = 10;
+			if (progress > 0)
+			{
+				self->m_sync_count = (self->m_sync_count + 1) % s_sync_interval;
+				if (self->m_sync_count == 0)
+				{
+					uint64_t localtime = time_micro_sec();
+					player->_set_sync_point(localtime, progress);
+				}
+			}
+
+			self->m_eof = eof;
+			return true;
 		}
+
+		
 	};
 
 	class Player::VideoPlayback

@@ -102,7 +102,7 @@ void* WindowCaptureCreate(int idx);
 void WindowCaptureDestroy(void* ptr);
 void* WindowCaptureGetSourcePtr(void* ptr);
 
-void* RecorderCreate(const char* filename, int mp4, int video_width, int video_height, int audio_device_id);
+void* RecorderCreate(const char* filename, int mp4, int video_width, int video_height, int record_audio, int audio_device_id);
 void RecorderDestroy(void* ptr);
 void RecorderSetSource(void* ptr, void* p_source);
 void RecorderStart(void* ptr);

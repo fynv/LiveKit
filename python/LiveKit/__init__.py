@@ -247,8 +247,8 @@ class WindowCapture(VideoSource):
         Native.WindowCaptureDestroy(self.cptr)
 
 class Recorder:
-    def __init__(self, filename, mp4, video_width, video_height, audio_device_id = -1):
-        self.cptr = Native.RecorderCreate(filename.encode('mbcs'), mp4, video_width, video_height, audio_device_id)
+    def __init__(self, filename, mp4, video_width, video_height, record_audio = False, audio_device_id = 0):
+        self.cptr = Native.RecorderCreate(filename.encode('mbcs'), mp4, video_width, video_height, record_audio, audio_device_id)
 
     def __del__(self):
         Native.RecorderDestroy(self.cptr)

@@ -132,7 +132,7 @@ namespace LiveKit
 
 		~AudioPlayback()
 		{
-			
+			m_audio_out = nullptr;
 		}
 
 

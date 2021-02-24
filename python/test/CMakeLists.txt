@@ -14,6 +14,8 @@ test_ipc_server.py
 test_ipc_client.py
 
 test_audio_repeater.py
+
+test_player.py
 )
 
 install(FILES ${PYTHON_TEST} DESTINATION test_python)

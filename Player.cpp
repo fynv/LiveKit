@@ -146,14 +146,14 @@ namespace LiveKit
 		static void eof_callback(void* usr_ptr)
 		{
 			AudioPlayback* self = (AudioPlayback*)usr_ptr;
-			Player* player = (Player*)self->m_player;
+			Player* player = self->m_player;
 			player->m_audio_eof = true;
 		}
 
 		static bool callback(short* buf, void* usr_ptr)
 		{
 			AudioPlayback* self = (AudioPlayback*)usr_ptr;
-			Player* player = (Player*)self->m_player;
+			Player* player = self->m_player;
 			PacketQueue& queue = *player->m_queue_audio;
 			int time_base_num = player->m_audio_time_base_num;
 			int time_base_den = player->m_audio_time_base_den;

@@ -523,19 +523,19 @@ namespace LiveKit
 		m_demuxing = true;
 		m_thread_demux = (std::unique_ptr<std::thread>)(new std::thread(thread_demux, this));
 
-		if (m_a_idx >= 0)
-		{
-			m_audio_playing = true;
-			m_audio_eof = false;
-			m_audio_playback = (std::unique_ptr<AudioPlayback>)(new AudioPlayback(m_audio_device_id, DEV_SAMPLES_PER_BUFFER, this));
-		}
-
 		if (m_v_idx >= 0)
 		{
 			m_video_playing = true;
 			m_video_eof = false;
 			m_video_playback = (std::unique_ptr<VideoPlayback>)(new VideoPlayback(this));
 		}
+
+		if (m_a_idx >= 0)
+		{
+			m_audio_playing = true;
+			m_audio_eof = false;
+			m_audio_playback = (std::unique_ptr<AudioPlayback>)(new AudioPlayback(m_audio_device_id, DEV_SAMPLES_PER_BUFFER, this));
+		}		
 	}
 
 

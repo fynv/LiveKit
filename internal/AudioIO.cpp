@@ -78,8 +78,8 @@ namespace LiveKit
 			m_Buffer2 = m_Buffer + samples_per_buffer * format.nChannels;
 			memset(m_Buffer, 0, sizeof(short)*samples_per_buffer * format.nChannels * 2);
 
-			m_callback(m_Buffer1, m_user_ptr);
-			m_callback(m_Buffer2, m_user_ptr);
+			m_isPlaying = m_callback(m_Buffer1, m_user_ptr);
+			m_isPlaying = m_callback(m_Buffer2, m_user_ptr);
 
 			m_WaveHeader1.lpData = (char *)m_Buffer1;
 			m_WaveHeader1.dwBufferLength = samples_per_buffer * format.nChannels * sizeof(short);

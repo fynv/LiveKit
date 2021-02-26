@@ -86,10 +86,12 @@ class ImageFile(VideoSource):
 class AudioInputDeviceList(StringList):
     def __init__(self):
         self.cptr = Native.AudioInputDeviceListCreate()
+        self.id_default = Native.GetDefaultAudioInputDeviceID()
 
 class AudioOutputDeviceList(StringList):
     def __init__(self):
-        self.cptr = Native.AudioOutputDeviceListCreate() 
+        self.cptr = Native.AudioOutputDeviceListCreate()
+        self.id_default = Native.GetDefaultAudioOutputDeviceID()
 
 class MediaInfo:
     def __init__(self, filename):

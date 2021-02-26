@@ -17,8 +17,6 @@ extern "C" {
 #include <queue>
 #include <thread>
 
-#define DEV_SAMPLES_PER_BUFFER 4096
-
 namespace LiveKit
 {
 	void get_media_info(const char* fn, MediaInfo* info)
@@ -108,13 +106,12 @@ namespace LiveKit
 	class Player::AudioPlayback
 	{
 	public:
-		AudioPlayback(int audioDevId, size_t samples_per_buffer, Player* player) 
-			: m_player(player)
-			, m_samples_per_buffer(samples_per_buffer)
+		AudioPlayback(int audioDevId, Player* player) : m_player(player)
 		{
 			m_p_packet = std::unique_ptr<AVPacket>(new AVPacket);
 			m_packet_ref = false;
-			m_audio_out = (std::unique_ptr<AudioOut>)(new AudioOut(audioDevId, player->m_p_codec_ctx_audio->sample_rate, samples_per_buffer, callback, eof_callback, this));
+			m_audio_out = (std::unique_ptr<AudioOut>)(new AudioOut(audioDevId, player->m_p_codec_ctx_audio->sample_rate, callback, eof_callback, this));
+
 		}
 
 
@@ -131,8 +128,7 @@ namespace LiveKit
 
 	private:
 		Player* m_player;
-		size_t m_samples_per_buffer;
-		std::unique_ptr<AudioOut> m_audio_out;		
+		std::unique_ptr<AudioOut> m_audio_out;
 
 		bool m_eof = false;
 		bool m_packet_ref = false;
@@ -150,7 +146,7 @@ namespace LiveKit
 			player->m_audio_eof = true;
 		}
 
-		static bool callback(short* buf, void* usr_ptr)
+		static bool callback(short* buf, size_t buf_size, void* usr_ptr)
 		{
 			AudioPlayback* self = (AudioPlayback*)usr_ptr;
 			Player* player = self->m_player;
@@ -159,17 +155,21 @@ namespace LiveKit
 			int time_base_den = player->m_audio_time_base_den;
 
 			bool eof = self->m_eof;
-			if (!player->m_audio_playing || eof) return false;
+			if (!player->m_audio_playing || eof)
+			{
+				memset(buf, 0, sizeof(short)*buf_size * 2);
+				return false;
+			}
 
 			int out_pos = 0;
 			int count_packet = 0;
 			int64_t progress = -1;
-			while (player->m_audio_playing && !eof && out_pos < self->m_samples_per_buffer)
+			while (player->m_audio_playing && !eof && out_pos < buf_size)
 			{
 				if (player->m_audio_buffer != nullptr && self->m_in_pos < self->m_in_length)
 				{
 					int copy_size = self->m_in_length - self->m_in_pos;
-					int copy_size_out = self->m_samples_per_buffer - out_pos;
+					int copy_size_out = buf_size - out_pos;
 					if (copy_size > copy_size_out) copy_size = copy_size_out;
 					short* p_out = buf + out_pos * 2;
 					const short* p_in = (const short*)player->m_audio_buffer->data() + self->m_in_pos * 2;
@@ -245,10 +245,10 @@ namespace LiveKit
 				}
 			}
 
-			if (out_pos < self->m_samples_per_buffer)
+			if (out_pos < buf_size)
 			{
 				short* p_out = buf + out_pos * 2;
-				size_t bytes = sizeof(short) * (self->m_samples_per_buffer - out_pos) * 2;
+				size_t bytes = sizeof(short) * (buf_size - out_pos) * 2;
 				memset(p_out, 0, bytes);
 			}
 
@@ -266,8 +266,6 @@ namespace LiveKit
 			self->m_eof = eof;
 			return true;
 		}
-
-		
 	};
 
 	class Player::VideoPlayback
@@ -534,7 +532,7 @@ namespace LiveKit
 		{
 			m_audio_playing = true;
 			m_audio_eof = false;
-			m_audio_playback = (std::unique_ptr<AudioPlayback>)(new AudioPlayback(m_audio_device_id, DEV_SAMPLES_PER_BUFFER, this));
+			m_audio_playback = (std::unique_ptr<AudioPlayback>)(new AudioPlayback(m_audio_device_id, this));
 		}		
 	}
 
@@ -607,7 +605,7 @@ namespace LiveKit
 				m_audio_playback = nullptr;
 				m_audio_playing = true;
 				m_audio_eof = false;
-				m_audio_playback = (std::unique_ptr<AudioPlayback>)(new AudioPlayback(m_audio_device_id, DEV_SAMPLES_PER_BUFFER, this));
+				m_audio_playback = (std::unique_ptr<AudioPlayback>)(new AudioPlayback(m_audio_device_id, this));
 			}
 		}
 	}

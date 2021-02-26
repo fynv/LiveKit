@@ -152,7 +152,7 @@ A Copier object simply copies one file to another (in its own process). The file
 This can be useful, for example, if you want to build a conference server.
 
 ### Audio Devices
-Audio Device IDs are used in Player, Recorder and AudioRepeater objects. When an Audio Device ID >=0, it is corresponding to a MME system audio device.
+Audio Device IDs are used in Player, Recorder and AudioRepeater objects. When an Audio Device ID >=0, it is corresponding to a system audio device.
 When it is negative, the audio stream will be wired to an (in-proess) virtual audio channel. For interprocess virtual-wiring, [VB-CABLE](https://vb-audio.com/Cable/) would be very helpful.
 
 ## License

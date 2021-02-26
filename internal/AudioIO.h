@@ -1,34 +1,56 @@
 #pragma once
 
-#include "AudioPort.h"
+#include "AudioCallbacks.h"
+#include <memory>
+#include <string>
+#include <vector>
 
 namespace LiveKit
 {
 	class AudioOut
 	{
 	public:
-		AudioOut(int audio_device_id, int samplerate, int samples_per_buffer, AudioWriteCallback callback, EOFCallback eof_callback, void* user_ptr);
+		AudioOut(int audio_device_id, int samplerate, AudioWriteCallback callback, EOFCallback eof_callback, void* user_ptr);
 		~AudioOut();
 
-	private:
-		class Implementer;
+		class Implementer
+		{
+		public:
+			Implementer() {}
+			virtual ~Implementer() {}
+		};
+
 		class ImplPort;
 		class ImplMME;
+		class ImplWASAPI;
+
+		static const std::vector<std::string>& s_get_list_audio_devices(int* id_default);
+
+	private:		
 		std::unique_ptr<Implementer> m_impl;
+
 	};
 
 	class AudioIn
 	{
 	public:
-		AudioIn(int audio_device_id, int samplerate, int samples_per_buffer, AudioReadCallback callback, EOFCallback eof_callback, void* user_ptr);
+		AudioIn(int audio_device_id, int samplerate, AudioReadCallback callback, EOFCallback eof_callback, void* user_ptr);
 		~AudioIn();
 
-	private:
-		class Implementer;
+		class Implementer
+		{
+		public:
+			Implementer() {}
+			virtual ~Implementer() {}
+		};
+
 		class ImplPort;
 		class ImplMME;
+		class ImplWASAPI;
+
+		static const std::vector<std::string>& s_get_list_audio_devices(int* id_default);
+
+	private:
 		std::unique_ptr<Implementer> m_impl;
 	};
-
 }
-

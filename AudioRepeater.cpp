@@ -1,81 +1,15 @@
 #include "AudioRepeater.h"
 #include "AudioIO.h"
-
-#include <queue>
-#include <Windows.h>
+#include "BufferQueue.h"
 
 namespace LiveKit
 {
-	class Buffer
-	{
-	public:
-		short* m_data;
-		Buffer(size_t size)
-		{
-			m_data = new short[size];
-		}
-		~Buffer()
-		{
-			delete[] m_data;
-		}
-	};
-
-	class BufferQueue
-	{
-	public:
-		BufferQueue()
-		{
-			InitializeCriticalSectionAndSpinCount(&m_cs, 0x00000400);
-			m_hSemaphore = CreateSemaphore(NULL, 0, ~(1 << 31), NULL);
-		}
-
-		~BufferQueue()
-		{
-			while (m_queue.size() > 0)
-			{
-				Buffer* buf = PopBuffer();
-				delete buf;
-			}
-			CloseHandle(m_hSemaphore);
-			DeleteCriticalSection(&m_cs);
-		}
-
-		size_t Size()
-		{
-			return m_queue.size();
-		}
-
-		void PushBuffer(Buffer* buf)
-		{
-			EnterCriticalSection(&m_cs);
-			m_queue.push(buf);
-			LeaveCriticalSection(&m_cs);
-			ReleaseSemaphore(m_hSemaphore, 1, NULL);
-		}
-
-		Buffer* PopBuffer()
-		{
-			WaitForSingleObject(m_hSemaphore, INFINITE);
-			EnterCriticalSection(&m_cs);
-			Buffer* ret = m_queue.front();
-			m_queue.pop();
-			LeaveCriticalSection(&m_cs);
-			return ret;
-		}
-
-	private:
-		std::queue<Buffer*> m_queue;
-		CRITICAL_SECTION m_cs;
-		HANDLE m_hSemaphore;
-	};
-
-
 	class AudioRepeater::AudioRecorder
 	{
 	public:
-		AudioRecorder(int devId, size_t samples_per_buffer) : m_samples_per_buffer(samples_per_buffer)
+		AudioRecorder(int devId)
 		{
-			m_audio_in = (std::unique_ptr<AudioIn>)(new AudioIn(devId, 44100, samples_per_buffer, callback, eof_callback, this));
+			m_audio_in = (std::unique_ptr<AudioIn>)(new AudioIn(devId, 44100, callback, eof_callback, this));
 		}
 
 		~AudioRecorder()
@@ -88,87 +22,87 @@ namespace LiveKit
 			return &m_buffer_queue;
 		}
 
-		BufferQueue* get_recycler()
-		{
-			return &m_recycler;
-		}
-
 	private:
-		size_t m_samples_per_buffer;
 		BufferQueue m_buffer_queue;
-		BufferQueue m_recycler;
-		
 		std::unique_ptr<AudioIn> m_audio_in;
 
 		static void eof_callback(void* usr_ptr) {}
-
-		static bool callback(const short* buf, void* usr_ptr)
+		static bool callback(const short* buf, size_t buf_size, void* usr_ptr)
 		{
 			AudioRecorder* self = (AudioRecorder*)usr_ptr;
-			self->recordBuf(buf);
+			self->recordBuf(buf, buf_size);
 			return true;
 		}
 
-		void recordBuf(const short* data)
+		void recordBuf(const short* buf, size_t buf_size)
 		{
-			Buffer* newBuf;
-			if (m_recycler.Size() > 0)
-				newBuf = m_recycler.PopBuffer();
-			else
-				newBuf = new Buffer(m_samples_per_buffer * 2);
-			memcpy(newBuf->m_data, data, m_samples_per_buffer * sizeof(short) * 2);
+			AudioBuffer* newBuf= new AudioBuffer(2, buf_size);
+			memcpy(newBuf->data(), buf, buf_size * sizeof(short) * 2);
 			m_buffer_queue.PushBuffer(newBuf);
 		}
+
 	};
 
 	class AudioRepeater::AudioPlayback
 	{
 	public:
-		AudioPlayback(int devId, size_t samples_per_buffer, BufferQueue* buffer_queue, BufferQueue* recycler)
-			: m_samples_per_buffer(samples_per_buffer), m_buffer_queue(buffer_queue), m_recycler(recycler)
+		AudioPlayback(int devId, BufferQueue* buffer_queue) : m_buffer_queue(buffer_queue)
 		{
-			m_audio_out = (std::unique_ptr<AudioOut>)(new AudioOut(devId, 44100, samples_per_buffer, callback, eof_callback, this));
+			m_audio_out = (std::unique_ptr<AudioOut>)(new AudioOut(devId, 44100, callback, eof_callback, this));
 		}
 
 		~AudioPlayback()
 		{
 			m_audio_out = nullptr;
+			delete m_buf_in;
 		}
 
-
 	private:
-		size_t m_samples_per_buffer;
 		BufferQueue* m_buffer_queue;
-		BufferQueue* m_recycler;
-
 		std::unique_ptr<AudioOut> m_audio_out;
-
 		static void eof_callback(void* usr_ptr) {}
 
-		static bool callback(short* buf, void* usr_ptr)
+		AudioBuffer* m_buf_in = nullptr;
+		int m_in_pos = 0;
+
+		static bool callback(short* buf, size_t buf_size, void* usr_ptr)
 		{
 			AudioPlayback* self = (AudioPlayback*)usr_ptr;
-			self->fillBuf(buf);
+			self->fillBuf(buf, buf_size);
 			return true;
 		}
 
-		void fillBuf(short* data)
+		void fillBuf(short* buf, size_t buf_size)
 		{
-			if (m_buffer_queue->Size() > 0)
+			int out_pos = 0;
+			while (out_pos < buf_size)
 			{
-				Buffer* buf = m_buffer_queue->PopBuffer();
-				memcpy(data, buf->m_data, m_samples_per_buffer * sizeof(short) * 2);
-				m_recycler->PushBuffer(buf);
+				if (m_buf_in != nullptr && m_in_pos < m_buf_in->len())
+				{
+					int copy_size = m_buf_in->len() - m_in_pos;
+					int copy_size_out = buf_size - out_pos;
+					if (copy_size > copy_size_out) copy_size = copy_size_out;
+					short* p_out = buf + out_pos * 2;
+					const short* p_in = (const short*)m_buf_in->data() + m_in_pos * 2;
+					memcpy(p_out, p_in, sizeof(short)*copy_size * 2);
+					out_pos += copy_size;
+					m_in_pos += copy_size;
+				}
+				else
+				{
+					delete m_buf_in;
+					m_buf_in = m_buffer_queue->PopBuffer();
+					m_in_pos = 0;					
+				}
 			}
 		}
 	};
 
-
 	AudioRepeater::AudioRepeater(int audio_device_id_in, int audio_device_id_out)
-		: m_audio_recorder(new AudioRecorder(audio_device_id_in, 4096))
-		, m_audio_playback(new AudioPlayback(audio_device_id_out, 4096, m_audio_recorder->get_buffer_queue(), m_audio_recorder->get_recycler()))
+		: m_audio_recorder(new AudioRecorder(audio_device_id_in))
+		, m_audio_playback(new AudioPlayback(audio_device_id_out, m_audio_recorder->get_buffer_queue()))
 	{
-		
+
 	}
 
 	AudioRepeater::~AudioRepeater()

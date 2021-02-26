@@ -39,7 +39,9 @@ extern "C"
 	PY_LiveKit_API int ImageFileHeight(void* ptr);
 
 	PY_LiveKit_API void* AudioInputDeviceListCreate();
+	PY_LiveKit_API int GetDefaultAudioInputDeviceID();
 	PY_LiveKit_API void* AudioOutputDeviceListCreate();
+	PY_LiveKit_API int GetDefaultAudioOutputDeviceID();
 
 	PY_LiveKit_API void* MediaInfoCreate(const char* fn);
 	PY_LiveKit_API void MediaInfoDestroy(void* ptr);
@@ -150,13 +152,11 @@ extern "C"
 #include <IPCSource.h>
 #include <Copier.h>
 #include <AudioRepeater.h>
+#include <AudioIO.h>
 using namespace LiveKit;
 
 #include <vector>
 #include <string>
-
-#include <Windows.h>
-#include <mmsystem.h>
 
 void StrListDestroy(void* ptr)
 {
@@ -396,39 +396,31 @@ int ImageFileHeight(void* ptr)
 }
 
 void* AudioInputDeviceListCreate()
-{
-	static std::vector<std::string> s_devices;
-	if (s_devices.size() == 0)
-	{
-		unsigned num_dev = waveInGetNumDevs();
-		WAVEINCAPS waveInDevCaps;
-		for (unsigned i = 0; i < num_dev; i++)
-		{
-			waveInGetDevCaps(i, &waveInDevCaps, sizeof(WAVEINCAPS));
-			s_devices.push_back(waveInDevCaps.szPname);
-		}
-	}
+{	
 	std::vector<std::string>* lst = new std::vector<std::string>;
-	*lst = s_devices;
+	*lst = AudioIn::s_get_list_audio_devices(nullptr);
 	return lst;
+}
+
+int GetDefaultAudioInputDeviceID()
+{
+	int id_default;
+	AudioIn::s_get_list_audio_devices(&id_default);
+	return id_default;
 }
 
 void* AudioOutputDeviceListCreate()
 {
-	static std::vector<std::string> s_devices;
-	if (s_devices.size() == 0)
-	{
-		unsigned num_dev = waveOutGetNumDevs();
-		WAVEOUTCAPS waveOutDevCaps;
-		for (unsigned i = 0; i < num_dev; i++)
-		{
-			waveOutGetDevCaps(i, &waveOutDevCaps, sizeof(WAVEOUTCAPS));
-			s_devices.push_back(waveOutDevCaps.szPname);
-		}
-	}
 	std::vector<std::string>* lst = new std::vector<std::string>;
-	*lst = s_devices;
+	*lst = AudioOut::s_get_list_audio_devices(nullptr);
 	return lst;
+}
+
+int GetDefaultAudioOutputDeviceID()
+{
+	int id_default;
+	AudioOut::s_get_list_audio_devices(&id_default);
+	return id_default;
 }
 
 void* MediaInfoCreate(const char* fn)

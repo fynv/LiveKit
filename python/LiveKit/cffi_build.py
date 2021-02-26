@@ -40,7 +40,9 @@ int ImageFileWidth(void* ptr);
 int ImageFileHeight(void* ptr);
 
 void* AudioInputDeviceListCreate();
+int GetDefaultAudioInputDeviceID();
 void* AudioOutputDeviceListCreate();
+int GetDefaultAudioOutputDeviceID();
 
 void* MediaInfoCreate(const char* fn);
 void MediaInfoDestroy(void* ptr);

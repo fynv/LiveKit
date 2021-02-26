@@ -2,6 +2,7 @@
 #include "Image.h"
 #include "VideoPort.h"
 #include "AudioIO.h"
+#include "BufferQueue.h"
 #include "Utils.h"
 
 extern "C"
@@ -19,75 +20,12 @@ extern "C"
 
 namespace LiveKit
 {
-	class Buffer
-	{
-	public:
-		short* m_data;
-		Buffer(size_t size)
-		{
-			m_data = new short[size];
-		}
-		~Buffer()
-		{
-			delete[] m_data;
-		}
-	};
-
-	class BufferQueue
-	{
-	public:
-		BufferQueue()
-		{
-			InitializeCriticalSectionAndSpinCount(&m_cs, 0x00000400);
-			m_hSemaphore = CreateSemaphore(NULL, 0, ~(1 << 31), NULL);
-		}
-
-		~BufferQueue()
-		{
-			while (m_queue.size() > 0)
-			{
-				Buffer* buf = PopBuffer();
-				delete buf;
-			}
-			CloseHandle(m_hSemaphore);
-			DeleteCriticalSection(&m_cs);
-		}
-
-		size_t Size()
-		{
-			return m_queue.size();
-		}
-
-		void PushBuffer(Buffer* buf)
-		{
-			EnterCriticalSection(&m_cs);
-			m_queue.push(buf);
-			LeaveCriticalSection(&m_cs);
-			ReleaseSemaphore(m_hSemaphore, 1, NULL);
-		}
-
-		Buffer* PopBuffer()
-		{
-			WaitForSingleObject(m_hSemaphore, INFINITE);
-			EnterCriticalSection(&m_cs);
-			Buffer* ret = m_queue.front();
-			m_queue.pop();
-			LeaveCriticalSection(&m_cs);
-			return ret;
-		}
-
-	private:
-		std::queue<Buffer*> m_queue;
-		CRITICAL_SECTION m_cs;
-		HANDLE m_hSemaphore;
-	};
-
 	class Recorder::AudioRecorder
 	{
 	public:
-		AudioRecorder(int devId, size_t samples_per_buffer) : m_samples_per_buffer(samples_per_buffer)
+		AudioRecorder(int devId)
 		{
-			m_audio_in = (std::unique_ptr<AudioIn>)(new AudioIn(devId, 44100, samples_per_buffer, callback, eof_callback, this));
+			m_audio_in = (std::unique_ptr<AudioIn>)(new AudioIn(devId, 44100, callback, eof_callback, this));
 		}
 
 		~AudioRecorder()
@@ -95,44 +33,30 @@ namespace LiveKit
 			m_audio_in = nullptr;
 		}
 
-		Buffer* get_buffer()
+		AudioBuffer* get_buffer()
 		{
 			return m_buffer_queue.PopBuffer();
 		}
 
-		void recycle_buffer(Buffer* buf)
-		{
-			m_recycler.PushBuffer(buf);
-		}
-
 	private:
-		size_t m_samples_per_buffer;
 		BufferQueue m_buffer_queue;
-		BufferQueue m_recycler;
-
 		std::unique_ptr<AudioIn> m_audio_in;
 
-		static void eof_callback(void* usr_ptr)	{}
+		static void eof_callback(void* usr_ptr) {}
 
-		static bool callback(const short* buf, void* usr_ptr)
+		static bool callback(const short* buf, size_t buf_size, void* usr_ptr)
 		{
 			AudioRecorder* self = (AudioRecorder*)usr_ptr;
-			self->recordBuf(buf);
+			self->recordBuf(buf, buf_size);
 			return true;
-		}	
-
-		void recordBuf(const short* data)
-		{
-			unsigned size = (unsigned)(m_samples_per_buffer * sizeof(short) * 2);
-			Buffer* newBuf;
-			if (m_recycler.Size() > 0)
-				newBuf = m_recycler.PopBuffer();
-			else
-				newBuf = new Buffer(m_samples_per_buffer * 2);
-			memcpy(newBuf->m_data, data, size);
-			m_buffer_queue.PushBuffer(newBuf);
 		}
 
+		void recordBuf(const short* buf, size_t buf_size)
+		{
+			AudioBuffer* newBuf = new AudioBuffer(2, buf_size);
+			memcpy(newBuf->data(), buf, buf_size * sizeof(short) * 2);
+			m_buffer_queue.PushBuffer(newBuf);
+		}
 	};
 
 	static const AVCodecID video_codec_id = AV_CODEC_ID_H264;
@@ -158,7 +82,6 @@ namespace LiveKit
 		struct SwsContext *sws_ctx = nullptr;
 		struct SwrContext *swr_ctx = nullptr;
 	};
-
 
 	inline void add_video_stream(OutputStream *ost, AVFormatContext *oc, AVCodec *codec, int width, int height)
 	{
@@ -273,8 +196,8 @@ namespace LiveKit
 	Recorder::Recorder(const char* filename, bool mp4, int video_width, int video_height, bool record_audio, int audio_device_id)
 		: m_video_width(video_width), m_video_height(video_height), m_record_audio(record_audio), m_audio_device_id(audio_device_id)
 	{
-		AVOutputFormat *output_format = av_guess_format(mp4?"mp4":"flv", nullptr, filename);
-		avformat_alloc_output_context2(&m_oc, output_format, nullptr, filename);		
+		AVOutputFormat *output_format = av_guess_format(mp4 ? "mp4" : "flv", nullptr, filename);
+		avformat_alloc_output_context2(&m_oc, output_format, nullptr, filename);
 		m_fmt = m_oc->oformat;
 
 		AVCodec *video_codec = avcodec_find_encoder(video_codec_id);
@@ -302,7 +225,7 @@ namespace LiveKit
 		stop();
 		av_write_trailer(m_oc);
 		close_stream(m_oc, m_video_st.get());
-		if (m_audio_st!=nullptr)
+		if (m_audio_st != nullptr)
 			close_stream(m_oc, m_audio_st.get());
 		if (!(m_fmt->flags & AVFMT_NOFILE))
 			avio_closep(&m_oc->pb);
@@ -314,10 +237,8 @@ namespace LiveKit
 		if (!m_recording)
 		{
 			if (m_record_audio)
-			{
-				int nb_samples = m_audio_st->enc->frame_size;
-				m_audio_recorder = (std::unique_ptr<AudioRecorder>)(new AudioRecorder(m_audio_device_id, nb_samples));
-			}
+				m_audio_recorder = (std::unique_ptr<AudioRecorder>)(new AudioRecorder(m_audio_device_id));
+
 			m_recording = true;
 			m_start_time = time_micro_sec();
 			m_frame_count = 0;
@@ -333,10 +254,11 @@ namespace LiveKit
 			m_thread_write->join();
 			m_thread_write = nullptr;
 			m_audio_recorder = nullptr;
+			delete m_buf_in;
+			m_buf_in = nullptr;
+			m_in_pos = 0;
 		}
 	}
-
-
 
 	inline int write_frame(AVFormatContext *fmt_ctx, AVCodecContext *c, AVStream *st, AVFrame *frame)
 	{
@@ -357,44 +279,35 @@ namespace LiveKit
 		}
 
 		return ret == AVERROR_EOF ? 1 : 0;
-	}	
-
-	void Recorder::update_video()
-	{
-		AVCodecContext *c = m_video_st->enc;
-		if (m_video_st->tmp_buffer == nullptr)
-			m_video_st->tmp_buffer = (uint8_t*)malloc((size_t)m_video_width* m_video_height * 3);
-
-		memset(m_video_st->tmp_buffer, 0, (size_t)m_video_width*m_video_height * 3);		
-		if (m_source != nullptr)
-		{
-			uint64_t timestamp;
-			const Image* img_in = m_source->read_image(&timestamp);
-			if (timestamp != (uint64_t)(-1))
-			{
-				copy_centered(img_in->data(), img_in->width(), img_in->height(), img_in->has_alpha() ? 4 : 3,
-					m_video_st->tmp_buffer, m_video_width, m_video_height, 3, img_in->is_flipped());
-			}
-		}
-
-		av_frame_make_writable(m_video_st->frame);
-		const unsigned char* p_data = m_video_st->tmp_buffer;
-		int stride = c->width * 3;	
-		sws_scale(m_video_st->sws_ctx, &p_data, &stride, 0, c->height, m_video_st->frame->data, m_video_st->frame->linesize);
-
-		m_video_st->frame->pts = m_video_st->next_pts++;
-		write_frame(m_oc, m_video_st->enc, m_video_st->st, m_video_st->frame);
-		
 	}
 
 	void Recorder::update_audio()
 	{
-		Buffer* buf = m_audio_recorder->get_buffer();
-
 		AVCodecContext *c = m_audio_st->enc;
-		int16_t *q = (int16_t*)m_audio_st->tmp_frame->data[0];
-		memcpy(q, buf->m_data, sizeof(short)*m_audio_st->tmp_frame->nb_samples*2);
-		m_audio_recorder->recycle_buffer(buf);
+		int16_t *buf = (int16_t*)m_audio_st->tmp_frame->data[0];
+
+		int out_len = m_audio_st->tmp_frame->nb_samples;
+		int out_pos = 0;
+		while (out_pos < out_len)
+		{
+			if (m_buf_in != nullptr && m_in_pos < m_buf_in->len())
+			{
+				int copy_size = m_buf_in->len() - m_in_pos;
+				int copy_size_out = out_len - out_pos;
+				if (copy_size > copy_size_out) copy_size = copy_size_out;
+				short* p_out = buf + out_pos * 2;
+				const short* p_in = (const short*)m_buf_in->data() + m_in_pos * 2;
+				memcpy(p_out, p_in, sizeof(short)*copy_size * 2);
+				out_pos += copy_size;
+				m_in_pos += copy_size;
+			}
+			else
+			{
+				delete m_buf_in;
+				m_buf_in = m_audio_recorder->get_buffer();
+				m_in_pos = 0;
+			}
+		}
 
 		m_audio_st->tmp_frame->pts = m_audio_st->next_pts;
 		m_audio_st->next_pts += m_audio_st->tmp_frame->nb_samples;
@@ -410,7 +323,37 @@ namespace LiveKit
 		m_audio_st->samples_count += dst_nb_samples;
 
 		write_frame(m_oc, c, m_audio_st->st, m_audio_st->frame);
+
 	}
+
+	void Recorder::update_video()
+	{
+		AVCodecContext *c = m_video_st->enc;
+		if (m_video_st->tmp_buffer == nullptr)
+			m_video_st->tmp_buffer = (uint8_t*)malloc((size_t)m_video_width* m_video_height * 3);
+
+		memset(m_video_st->tmp_buffer, 0, (size_t)m_video_width*m_video_height * 3);
+		if (m_source != nullptr)
+		{
+			uint64_t timestamp;
+			const Image* img_in = m_source->read_image(&timestamp);
+			if (timestamp != (uint64_t)(-1))
+			{
+				copy_centered(img_in->data(), img_in->width(), img_in->height(), img_in->has_alpha() ? 4 : 3,
+					m_video_st->tmp_buffer, m_video_width, m_video_height, 3, img_in->is_flipped());
+			}
+		}
+
+		av_frame_make_writable(m_video_st->frame);
+		const unsigned char* p_data = m_video_st->tmp_buffer;
+		int stride = c->width * 3;
+		sws_scale(m_video_st->sws_ctx, &p_data, &stride, 0, c->height, m_video_st->frame->data, m_video_st->frame->linesize);
+
+		m_video_st->frame->pts = m_video_st->next_pts++;
+		write_frame(m_oc, m_video_st->enc, m_video_st->st, m_video_st->frame);
+
+	}
+
 
 	void Recorder::update_av()
 	{

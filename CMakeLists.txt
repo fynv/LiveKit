@@ -42,6 +42,8 @@ internal/AudioBuffer.cpp
 internal/RenderingOGL.cpp
 internal/AudioPort.cpp
 internal/AudioIO.cpp
+internal/AudioIOMME.cpp
+internal/AudioIOWASAPI.cpp
 VideoPort.cpp
 ImageFile.cpp
 Player.cpp
@@ -78,8 +80,12 @@ internal/Utils.h
 internal/Image.h
 internal/AudioBuffer.h
 internal/RenderingOGL.h
+internal/AudioCallbacks.h
 internal/AudioPort.h
 internal/AudioIO.h
+internal/AudioIOMME.h
+internal/AudioIOWASAPI.h
+internal/BufferQueue.h
 )
 
 add_definitions(${DEFINES})

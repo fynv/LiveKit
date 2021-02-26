@@ -2,7 +2,6 @@
 
 #include <memory>
 
-
 namespace std
 {
 	class thread;
@@ -13,7 +12,7 @@ struct AVOutputFormat;
 
 namespace LiveKit
 {
-	class Image;
+	class AudioBuffer;
 	class VideoSource;
 	struct OutputStream;
 
@@ -31,9 +30,8 @@ namespace LiveKit
 		void start();
 		void stop();
 
-
-	private:	
-		class AudioRecorder;		
+	private:
+		class AudioRecorder;
 
 		int m_video_width, m_video_height;
 		bool m_record_audio;
@@ -47,6 +45,9 @@ namespace LiveKit
 		std::unique_ptr<AudioRecorder> m_audio_recorder;
 		const VideoSource* m_source = nullptr;
 
+		AudioBuffer* m_buf_in = nullptr;
+		int m_in_pos = 0;
+
 		bool m_recording = false;
 		uint64_t m_start_time;
 		size_t m_frame_count;
@@ -55,7 +56,6 @@ namespace LiveKit
 		void update_av();
 		static void thread_write(Recorder* self);
 		std::unique_ptr<std::thread> m_thread_write;
-
 	};
 
 }

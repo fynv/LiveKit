@@ -254,13 +254,13 @@ namespace LiveKit
 
 			static int s_sync_interval = 10;
 			if (progress > 0)
-			{
-				self->m_sync_count = (self->m_sync_count + 1) % s_sync_interval;
+			{				
 				if (self->m_sync_count == 0)
 				{
 					uint64_t localtime = time_micro_sec();
 					player->_set_sync_point(localtime, progress);
 				}
+				self->m_sync_count = (self->m_sync_count + 1) % s_sync_interval;
 			}
 
 			self->m_eof = eof;

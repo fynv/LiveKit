@@ -14,6 +14,7 @@ namespace LiveKit
 		glfwInit();
 		m_window = glfwCreateWindow(window_width, window_height, title, NULL, NULL);
 		glfwMakeContextCurrent(m_window);
+		glfwSwapInterval(1);
 		glewInit();
 		glGenTextures(1, &m_tex_id);
 	}

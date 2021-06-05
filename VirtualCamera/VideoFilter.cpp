@@ -207,7 +207,18 @@ public:
 		if (m_system_start_time <= 0)
 			m_system_start_time = get_current_time();
 
-		FetchImage(dst);
+		REFERENCE_TIME wait_start_time = get_current_time(m_system_start_time);
+		while (get_current_time(m_system_start_time) - wait_start_time < ((VIDEOINFOHEADER*)m_mt.pbFormat)->AvgTimePerFrame * 2)
+		{
+			if (FetchImage(dst))
+			{
+				break;
+			}
+			else
+			{
+				Sleep(5);
+			}
+		}
 		
 		REFERENCE_TIME start_time = get_current_time(m_system_start_time);
 		REFERENCE_TIME end_time = start_time + ((VIDEOINFOHEADER*)m_mt.pbFormat)->AvgTimePerFrame;

@@ -1,4 +1,4 @@
 #pragma once
 
-void FetchImage(unsigned char* dst);
+bool FetchImage(unsigned char* dst);
 

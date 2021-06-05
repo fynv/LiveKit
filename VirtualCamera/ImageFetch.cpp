@@ -121,7 +121,7 @@ public:
 		}
 	}
 
-	void Fetch(unsigned char* dst)
+	bool Fetch(unsigned char* dst)
 	{
 		void* data = nullptr;
 		int width_out = VIDEO_WIDTH;
@@ -131,9 +131,9 @@ public:
 		if (m_hMapFile == nullptr)
 		{
 			m_hMapFile = OpenFileMappingA(FILE_MAP_ALL_ACCESS, FALSE, MAPPING_NAME.c_str());
-			if (m_hMapFile == nullptr) return;
+			if (m_hMapFile == nullptr) return false;
 			data = MapViewOfFile(m_hMapFile, FILE_MAP_ALL_ACCESS, 0, 0, sizeof(Header));
-			if (data == nullptr) return;
+			if (data == nullptr) return false;
 		}
 		else
 		{
@@ -142,9 +142,9 @@ public:
 			{
 				CloseHandle(m_hMapFile);
 				m_hMapFile = OpenFileMappingA(FILE_MAP_ALL_ACCESS, FALSE, MAPPING_NAME.c_str());
-				if (m_hMapFile == nullptr) return;
+				if (m_hMapFile == nullptr) return false;
 				data = MapViewOfFile(m_hMapFile, FILE_MAP_ALL_ACCESS, 0, 0, sizeof(Header));
-				if (data == nullptr) return;
+				if (data == nullptr) return false;
 			}
 		}
 
@@ -162,14 +162,18 @@ public:
 		unsigned char* p_frames = (unsigned char*)data + sizeof(Header);
 		FrameHeader* frame_header = (FrameHeader*)(p_frames + frame_size * cur_frame);
 		uint64_t new_timestamp = frame_header->timestamp;
+
+		bool copied = false;
 		if (new_timestamp != m_timestamp)
 		{
 			bool is_flipped = frame_header->is_flipped != 0;
 			unsigned char* data_in = (unsigned char*)(frame_header + 1);
 			copy_centered(data_in, width_in, height_in, chn_in, dst, width_out, height_out, chn_out, !is_flipped);
 			m_timestamp = new_timestamp;
+			copied = true;
 		}
 		UnmapViewOfFile(data);		
+		return copied;
 	}
 
 private:
@@ -177,8 +181,8 @@ private:
 	uint64_t m_timestamp = (uint64_t)(-1);
 };
 
-void FetchImage(unsigned char* dst)
+bool FetchImage(unsigned char* dst)
 {
 	static Fetcher fetcher;
-	fetcher.Fetch(dst);
+	return fetcher.Fetch(dst);
 }
